@@ -52,33 +52,72 @@ Explain what happened when you included fixed effects for classroom...
 \newpage
 ## 2. **Aggregation practice (coding)**
 
-### a) Summarize the data frame 
+### a) Make a summarized dataframe with the average attainment, the proportion male, and the number of observations for each neighborhood in the dataset.
 ```{r}
-# load the data 
-#dat <- read.dta13("neighborhood.dta")
+# load the data and summarize it
+dat <- read.dta13("neighborhood.dta")
 
-# some code goes here!
+# summarize the data
+dat_sum <- dat %>% 
+  group_by(neighid) %>%
+  summarise(
+    mean_attain = mean(attain), 
+    prop_male = mean(male), 
+    obs = n()) 
+
+# add a variable for deprivation
+dat_sum$deprive <- dat$deprive[match(dat_sum$neighid, dat$neighid)]
+
+head(dat_sum)
 ```
 
-### b) Histogram of proportion male
+### b) Make a histogram of the proportion male. Is this what you would expect? Is anything odd with this histogram?
 ```{r}
-# some code goes here!
+# make a histogram of the prop_male variable
+ggplot(dat_sum, aes(x = prop_male)) + 
+  geom_histogram(binwidth = 0.05)
 ```
 
-This histogram is (not?) odd because ... 
+This histogram is odd because there are neighborhoods that have 0 males and some neighborhoods only have males. This is not what we would expect. 
 
-### c) Observations per neighborhood
+### c) calculate the average, standard deviation, and range of the number of observations in a neighborhood. What does this tell you about (b)?
 ```{r}
-# some code goes here!
+# calculate the average, standard deviation, and range of the number of observations in a neighborhood
+mean(dat_sum$obs)
+sd(dat_sum$obs)
+range(dat_sum$obs)
+
+# install.packages("gtsummary")
+library(gtsummary)
+
+# Present the results in a table
+dat_sum %>%
+  select(obs) %>%
+  tbl_summary(
+    type = all_continuous() ~ "continuous2",
+    statistic = all_continuous() ~ c("{min}, {max}", "{mean} ({sd})"),
+    missing = "no", 
+    digits = all_continuous() ~ 4
+  )
 ```
 
-We see that ... 
+We see that the average number of observations is 4.4, the standard deviation is 2.8, and the range is 1 to 16. This tells us that there are some neighborhoods that only have 1 observation. This is why we see the odd histogram in (b).
 
-### d) Scatterplot of attainment and social deprivation 
+### d) Scatterplot of the social-deprivation score (deprive) and average attainment. What can you learn, if anything, from this plot? What things are distorted, and how?
+
 ```{r}
-# some code goes here!
-```
+# make a scatterplot of the social-deprivation score (deprive) and average attainment
+ggplot(dat_sum, aes(x = deprive, y = mean_attain)) + 
+  geom_point() +
+  labs(x = "Social-deprivation score", y = "Average attainment")
 
-comment on scatter plot...
+  mean(dat_sum$deprive) # average social-deprivation score is 0.37
+  range(dat_sum$deprive) # range of social-deprivation score is -1.082  2.959
+  mean(dat_sum$mean_attain) # average attainment of the neighborhood averages is 0.08
+  range(dat_sum$mean_attain) # average attainment of the neighborhood averages is -1.3276, 2.4151
+```
+Neighborhoods with higher social deprivation score tend to have lower average attainment. However, there are a few neighborhoods with high social-deprivation scores (above 1) that have high average attainment.
+Neighborhoods with the lowest average attainment of -1.3276 have a wide range of social-deprivation scores, which is odd.
+The plot is distorted partially because there are some neighborhoods that only have 1 observation, so the average attainment is the same as the attainment of that observation.
 
 
