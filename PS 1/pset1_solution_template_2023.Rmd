@@ -1,0 +1,84 @@
+---
+title: 'PS 1: My amazing solutions'
+output:
+  pdf_document: default
+date: "`r Sys.Date()`"
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align="center" )
+
+# Secret code (e.g., loading packages and data) goes here.
+
+library( tidyverse )
+library(readstata13) # This lets us read STATA files!
+library(lme4)
+#you can add any additional libraries here
+
+```
+
+## 1. **Tenn STAR, an experiment**
+
+### a) Looking at the standard errors 
+
+The standard errors did/did not change after accounting for clustering....
+
+
+### b) Extend your model
+```{r}
+# some code goes here!
+```
+
+Small class size did/did not have an impact on test scores....
+
+
+### c) Further control for classroom characteristics
+
+```{r}
+# some code goes here!
+```
+
+Explain what happened when you included fixed effects for classroom...
+
+
+### d) Testing a hypothesis about teachers' years of experience and small class sizes
+
+```{r}
+# some code goes here!
+```
+
+
+\newpage
+## 2. **Aggregation practice (coding)**
+
+### a) Summarize the data frame 
+```{r}
+# load the data 
+#dat <- read.dta13("neighborhood.dta")
+
+# some code goes here!
+```
+
+### b) Histogram of proportion male
+```{r}
+# some code goes here!
+```
+
+This histogram is (not?) odd because ... 
+
+### c) Observations per neighborhood
+```{r}
+# some code goes here!
+```
+
+We see that ... 
+
+### d) Scatterplot of attainment and social deprivation 
+```{r}
+# some code goes here!
+```
+
+comment on scatter plot...
+
+
