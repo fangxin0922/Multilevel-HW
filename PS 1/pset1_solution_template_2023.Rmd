@@ -75,10 +75,11 @@ head(dat_sum)
 ```{r}
 # make a histogram of the prop_male variable
 ggplot(dat_sum, aes(x = prop_male)) + 
-  geom_histogram(binwidth = 0.05)
+  geom_histogram(binwidth = 0.05) + 
+  labs(x = "proportion of males", y = "count of neighborhoods")
 ```
 
-This histogram is odd because there are neighborhoods that have 0 males and some neighborhoods only have males. This is not what we would expect. 
+This histogram is odd because there are many neighborhoods that have 0 males and some neighborhoods only have males. This is not what we would expect. 
 
 ### c) calculate the average, standard deviation, and range of the number of observations in a neighborhood. What does this tell you about (b)?
 ```{r}
