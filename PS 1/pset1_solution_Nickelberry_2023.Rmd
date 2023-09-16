@@ -1,0 +1,174 @@
+---
+title: 'PS 1: My amazing solutions'
+output:
+  pdf_document: default
+date: "`r Sys.Date()`"
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align="center" )
+
+# Secret code (e.g., loading packages and data) goes here.
+
+library( tidyverse )
+library(readstata13) # This lets us read STATA files!
+library(lme4)
+
+#you can add any additional libraries here
+library(haven)
+
+
+```
+
+
+```{r}
+#load in dataset NOTE WD 
+stud <- read.csv('stud_dat.csv') ## student-level data
+teach <- read.csv('teach_dat.csv') ## teacher-level data
+
+dat <- merge(stud, teach) ## merge the datasets. Automatically merges by clid, class id, the only variable in common
+
+dat <- na.omit(dat) ## for simplicity, we'll delete everyone missing any variables
+
+names(dat)
+nrow( dat )
+
+head(dat$tmathssk) ## math scores after kindergarten, the primary outcome
+
+dat$small_class <- dat$cltypek == 'small class'
+```
+
+## 1. **Tenn STAR, an experiment**
+
+### a) Looking at the standard errors 
+
+The standard errors did/did not change after accounting for clustering....
+```{r}
+# Estimating treatment effect with cluster-robust standard errors.
+
+
+# The vanilla OLS estimate of tx impact on math scores (SEs are wrong)
+mod1 <- lm(tmathssk ~ small_class, data = dat) 
+summary(mod)
+
+# Estimating using robust standard errors
+library( sandwich )
+library( lmtest )
+mod1_b<-coeftest( mod1, vcov. = vcovCL, cluster = dat$clid )
+mod1_b
+
+
+```
+
+standard error for for OLS estimate 1.701 for small_class(TRUE=1, False=0 "regular)  with an estimate of 7.114
+w/robust standard error: 3.9151 (larger?) with an estimate of 7.1136, not statistically significant either at the 0.05 level with a p-value of (0.07)
+
+### b) Extend your model
+```{r}
+# Extending model to include control for variables of student predictors, teacher experience. 
+mod2 <- lm(tmathssk ~ small_class + ssex + srace + sbirthq + totexpk, data = dat)
+
+#robust standard errors 
+mod2_b<-coeftest( mod2, vcov. = vcovCL, cluster = dat$clid )
+mod2_b
+```
+
+Small class size did have an impact on math test scores
+Does once adjusting for other variables(sex, race, chiid age and teacher experience), as the p-value is statistically significant at the 0.05 level, P=0.03, t-value is 2.18. 
+
+In the same direction as the unadjusted model with robust standard error accounting for clustering (classrooms that had smaller sizes had on average 8.25 points(? check unit) higher on math test compared to classrooms of regular size) 
+
+Also note that SE is a little lower once adjusting for other variables? Why would that be.... 
+
+```{r}
+#no covariate model for reading scores outcome 
+mod3 <- lm(treadssk ~ small_class, data = dat)
+
+#robust standard error 
+mod3_b<-coeftest( mod3, vcov. = vcovCL, cluster = dat$clid )
+mod3_b
+
+
+#covariate model for treadssk 
+mod4 <- lm(treadssk ~ small_class + ssex + srace + sbirthq + totexpk, data = dat)
+
+mod4_b<-coeftest( mod4, vcov. = vcovCL, cluster = dat$clid )
+mod4_b
+
+```
+
+Unadjusted demonstrates estimate of 4.58 for effect of treatment on reading scores. T-statistics is 1.82, and p-value is 0.07, not statistically significant at the 0.05 signifcance level, cannot reject the null hypothesis that the scores are different between classrooms that are regular size vs smaller size. 
+
+Models adjusted for covariates (sex, race, child age, and teacher experience) that also accounted for classroom clustering using cluster robust standard errors, demonstrated that the effect of treatment (small classrooms) on READING test scores was statistically significant at the 0.05 significance level with a t-statistic of 2.38 and a p-value of 0.018. More specially small classes had students score on average 5.58 points higher on reading test than students in regular sized classrooms, adjusting for X (insert covariates). 
+
+```{r}
+#make regression table 
+library(texreg)
+
+#math outcome (covariate vs no covariate model both using robust standard errors)
+screenreg(list(mod1_b, mod2_b))
+
+#reading outcome (covariate vs no covariate model both using robust SE)
+screenreg(list(mod3_b, mod4_b))
+```
+
+
+### c) Further control for classroom characteristics
+
+```{r}
+#covariate model for treadssk 
+mod4 <- lm(treadssk ~ small_class + ssex + srace + sbirthq + totexpk, data = dat)
+
+```
+
+Explain what happened when you included fixed effects for classroom...
+
+
+### d) Testing a hypothesis about teachers' years of experience and small class sizes
+
+```{r}
+# Teachers Years of Experience Predict Treatment? 
+#covariate model for treadssk 
+mod5 <- lm(small_class ~ totexpk, data = dat)
+summary (mod5)
+mod5_b<-coeftest( mod5, vcov. = vcovCL, cluster = dat$clid )
+mod5_b
+
+```
+Unadjusted model with robust SE demonstrates the association between  teacher experience and treatment assignment is not statistically significant at the 0.05 significance level with a t-statistic of -0.55 and a p-value of 0.59. We are not able to reject the null hypothesis that treatment assignment is different given teaching experience. 
+ 
+SHOULD I ADJUST FOR FACTORS? IF so WHAT (what proceeds treatment effect as an outcome potentially? Individual factors of child but could those be  a common cause? of A-- or Y?  )
+\newpage
+## 2. **Aggregation practice (coding)**
+
+### a) Summarize the data frame 
+```{r}
+# load the data 
+#dat <- read.dta13("neighborhood.dta")
+
+# some code goes here!
+```
+
+### b) Histogram of proportion male
+```{r}
+# some code goes here!
+```
+
+This histogram is (not?) odd because ... 
+
+### c) Observations per neighborhood
+```{r}
+# some code goes here!
+```
+
+We see that ... 
+
+### d) Scatterplot of attainment and social deprivation 
+```{r}
+# some code goes here!
+```
+
+comment on scatter plot...
+
+
