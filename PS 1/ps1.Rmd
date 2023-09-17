@@ -1,0 +1,220 @@
+---
+title: 'PS 1: My amazing solutions, Marshae, Xin, and Jennifer'
+output:
+  pdf_document: default
+date: "`r Sys.Date()`"
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = "left")
+knitr::opts_knit$set(root.dir = "C:/Users/jenni/Downloads")
+
+# Secret code (e.g., loading packages and data) goes here.
+
+library(tidyverse)
+library(readstata13) # This lets us read STATA files!
+##install.packages("lme4")
+library(lme4)
+
+#you can add any additional libraries here
+library(haven)
+##install.packages("sandwich")
+library(sandwich)
+##install.packages("lmtest")
+library(lmtest)
+##install.packages("stargazer")
+library(stargazer)
+##install.packages("gtsummary")
+library(gtsummary)
+
+```
+
+```{r}
+#load in dataset NOTE WD 
+stud <- read.csv('stud_dat.csv') ## student-level data
+teach <- read.csv('teach_dat.csv') ## teacher-level data
+
+dat <- merge(stud, teach) ## merge the datasets. Automatically merges by clid, class id, the only variable in common
+
+dat <- na.omit(dat) ## for simplicity, we'll delete everyone missing any variables
+
+names(dat)
+nrow( dat )
+
+head(dat$tmathssk) ## math scores after kindergarten, the primary outcome
+
+dat$small_class <- dat$cltypek == 'small class'
+dat$clid <- as.factor(dat$clid)
+```
+
+## 1. **Tenn STAR, an experiment**
+
+### a) Looking at the standard errors 
+
+The standard error for the intervention estimate prior to accounting for clustering was 1.70, and after calculating cluster robust standard error was 3.92.
+
+```{r}
+# Estimating treatment effect with cluster-robust standard errors.
+
+# The vanilla OLS estimate of tx impact on math scores (SEs are wrong)
+mod1a <- lm(tmathssk ~ small_class, data = dat) 
+summary(mod1a)
+
+# Estimating using robust standard errors
+coeftest(mod1a, vcov. = vcovCL, cluster = dat$clid )
+
+```
+
+### b) Extend your model
+
+Small class size did have an impact on math test scores. In the adjusted model, adjusted for sex, race, child age and teacher experience, the effect estimate of small class size was 8.25 (robust SE* 3.79, p = 0.030).
+
+Small class size also had an impact on reading test scores. In the adjusted model, adjusted for sex, race, child age, and teacher experience, the effect estimate of small class size was 5.58, (robust SE* 2.35, p = 0.018).
+
+*Robust SE accounting for classroom level clustering. 
+
+```{r}
+# Extending model to include control for variables of student predictors, teacher experience.
+mod1b <- lm(tmathssk ~ small_class + ssex + srace + sbirthq + totexpk, data = dat)
+
+#robust standard errors 
+coeftest(mod1b, vcov. = vcovCL, cluster = dat$clid )
+
+```
+
+```{r}
+#no covariate model for reading scores outcome 
+mod3 <- lm(treadssk ~ small_class, data = dat)
+
+#robust standard error 
+coeftest( mod3, vcov. = vcovCL, cluster = dat$clid )
+
+#covariate model for reading scores outcome
+mod4 <- lm(treadssk ~ small_class + ssex + srace + sbirthq + totexpk, data = dat)
+
+coeftest( mod4, vcov. = vcovCL, cluster = dat$clid )
+
+```
+
+
+```{r}
+table_text <- capture.output({
+  cat("\\footnotesize")  # Use \small or \footnotesize to adjust the font size
+  stargazer(mod1a, mod1b, mod3, mod4, header=TRUE, type='text', omit.stat = c("rsq", "adj.rsq", "ser", "f"))
+})
+cat(table_text, sep = "\n")
+
+```
+
+### c) Further control for classroom characteristics
+
+We ran a regression model with both the intervention and classroom ID as fixed effects, with no other covaraite/confounder adjustment. The effect estimate for the intervention is now much larger ($\beta$ = 36.07, SE = 9.57, p = 0.0002). I would be concerned about overfitting in this model, as there are 196 levels of classroom ID to only 3219 observations of reading score, of which there are only 89 unique, different possible reading scores. I do not think you should include class ID in any of the models as a fixed effect, because of this concern of overfitting. I would consider accounting for class ID as a random effect instead to further control for classroom characteristics.  
+
+```{r}
+#no covariate model for treadssk with a fixed effect for classroom.
+mod1c <- lm(treadssk ~ small_class + clid, data = dat)
+summary(mod1c)
+
+length(unique(dat$treadssk))
+length(unique(dat$clid))
+
+```
+### d) Testing a hypothesis about teachers' years of experience and small class sizes
+Unadjusted model with robust SE demonstrates the association between  teacher experience and treatment assignment is not statistically significant at the 0.05 significance level with a t-statistic of -0.55 and a p-value of 0.59. We are not able to reject the null hypothesis that treatment assignment is different given teaching experience. 
+
+We also tested whether the effect of class size on math and reading scores was modified by years of teaching experience. We found, that when accounting for classroom level clustering, there was no effect modification on the effect of classroom size on test score (math or reading) by teacher's years of experience. 
+
+```{r}
+# Teachers Years of Experience Predict Treatment? 
+#covariate model for treadssk 
+mod1d <- lm(small_class ~ totexpk, data = dat)
+summary(mod1d)
+
+coeftest(mod1d, vcov. = vcovCL, cluster = dat$clid )
+
+##interaction reading
+mod_interaction <- lm(treadssk ~ small_class*totexpk, data = dat)
+summary(mod_interaction)
+coeftest(mod_interaction, vcov. = vcovCL, cluster = dat$clid )
+
+##interaction math
+mod_interaction_math <- lm(tmathssk ~ small_class*totexpk, data = dat) 
+coeftest(mod_interaction_math, vcov. = vcovCL, cluster = dat$clid)
+
+```
+ 
+
+\newpage
+## 2. **Aggregation practice (coding)**
+
+### a) Make a summarized dataframe with the average attainment, the proportion male, and the number of observations for each neighborhood in the dataset.
+```{r}
+# load the data and summarize it
+dat <- read.dta13("neighborhood.dta")
+
+# summarize the data
+dat_sum <- dat %>% 
+  group_by(neighid) %>%
+  summarise(
+    mean_attain = mean(attain), 
+    prop_male = mean(male), 
+    obs = n()) 
+
+# add a variable for deprivation
+dat_sum$deprive <- dat$deprive[match(dat_sum$neighid, dat$neighid)]
+
+head(dat_sum)
+```
+
+### b) Make a histogram of the proportion male. Is this what you would expect? Is anything odd with this histogram?
+
+This histogram is odd because there are many neighborhoods that have 0 males and some neighborhoods that have only have males. This is not what we would expect. 
+
+```{r}
+# make a histogram of the prop_male variable
+ggplot(dat_sum, aes(x = prop_male)) + 
+  geom_histogram(binwidth = 0.05) + 
+  labs(x = "proportion of males", y = "count of neighborhoods")
+```
+
+### c) calculate the average, standard deviation, and range of the number of observations in a neighborhood. What does this tell you about (b)?
+
+We see that the average number of observations is 4.4, the standard deviation is 2.8, and the range is 1 to 16. This tells us that there are some neighborhoods that only have 1 observation. This is likely why we see the odd histogram in (b).
+
+```{r}
+# calculate the average, standard deviation, and range of the number of observations in a neighborhood
+mean(dat_sum$obs)
+sd(dat_sum$obs)
+range(dat_sum$obs)
+
+# Present the results in a table
+dat_sum %>%
+  select(obs) %>%
+  tbl_summary(
+    type = all_continuous() ~ "continuous2",
+    statistic = all_continuous() ~ c("{min}, {max}", "{mean} ({sd})"),
+    missing = "no", 
+    digits = all_continuous() ~ 4
+  )
+```
+
+
+### d) Scatterplot of the social-deprivation score (deprive) and average attainment. What can you learn, if anything, from this plot? What things are distorted, and how?
+
+Neighborhoods with higher social deprivation score tend to have lower average attainment. However, there are a few neighborhoods with high social-deprivation scores (above 1) that have high average attainment.
+Neighborhoods with the lowest average attainment of -1.3276 have a wide range of social-deprivation scores, which is odd.
+
+The plot is distorted partially because there are some neighborhoods that only have 1 observation, so the average attainment is the same as the attainment value of that single observation.
+
+```{r}
+# make a scatterplot of the social-deprivation score (deprive) and average attainment
+ggplot(dat_sum, aes(x = deprive, y = mean_attain)) + 
+  geom_point() +
+  labs(x = "Social-deprivation score", y = "Average attainment")
+
+  mean(dat_sum$deprive) # average social-deprivation score is 0.37
+  range(dat_sum$deprive) # range of social-deprivation score is -1.082  2.959
+  mean(dat_sum$mean_attain) # average attainment of the neighborhood averages is 0.08
+  range(dat_sum$mean_attain) # average attainment of the neighborhood averages is -1.3276, 2.4151
+```
