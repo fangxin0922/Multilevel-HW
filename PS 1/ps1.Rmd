@@ -5,10 +5,9 @@ output:
 date: "`r Sys.Date()`"
 ---
 
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, fig.align = "left")
-knitr::opts_knit$set(root.dir = "C:/Users/jenni/Downloads")
+#knitr::opts_knit$set(root.dir = "C:/Users/jenni/Downloads")
 
 # Secret code (e.g., loading packages and data) goes here.
 
@@ -120,6 +119,7 @@ length(unique(dat$treadssk))
 length(unique(dat$clid))
 
 ```
+
 ### d) Testing a hypothesis about teachers' years of experience and small class sizes
 Unadjusted model with robust SE demonstrates the association between  teacher experience and treatment assignment is not statistically significant at the 0.05 significance level with a t-statistic of -0.55 and a p-value of 0.59. We are not able to reject the null hypothesis that treatment assignment is different given teaching experience. 
 
