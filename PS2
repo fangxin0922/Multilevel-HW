@@ -1,0 +1,114 @@
+---
+title: 'PS 2: Jen Xin and Marshae'
+output:
+  pdf_document: default
+date: "`r Sys.Date()`"
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align="center" )
+knitr::opts_knit$set(root.dir = "C:/Users/jenni/Downloads")
+
+library(tidyverse)
+library(readstata13) # This lets us read STATA files!
+library(lme4)
+install.packages("sjstats")
+library(sjstats)
+
+```
+
+
+## 1. **Neighborhood effects data**
+
+### a) Random-intercept model
+
+The estimated between group variance is 0.202 and the within group variance is 0.804
+
+```{r}
+data <- read.dta13('neighborhood (1).dta')
+
+# your model goes here
+
+m1 <- lmer(attain ~ 1 + (1 | neighid), data = data)
+summary(m1)
+
+```
+### b) ICC 
+
+The ICC is the the proportion of the variance explained by the grouping structure (neighborhood) in the population (i.e how much variance is explained by the random effect). An ICC of 0.201 indicates that there is fairly little variation between the groups, and most of the variation is at the individual level.
+
+```{r}
+## By hand. Between group variance / total variance. 
+0.2024/ (0.2024 + 0.8044)
+
+##using sjstats package
+performance::icc(m1)
+
+```
+
+### c) Adding a covariate 
+
+Compared with the model in part (a), the standard deviation of the random intercept is 0.295 vs 0.450 (a decrease in the standard deviation of the random intercept once we have added the fixed effect for deprive). The standard deviation of the level-1 residual did not change much, (0.897 in part a and 0.901 in part b).
+
+The estimated effect estimate for deprive is -0.521. This indicates that for every unit increase in social deprivation score, there is an estimated 0.521 unit decrease in end of school educational attainment, accounting for clustering by neighborhood. 
+
+*** !!! XIN CAN YOU MAKE SURE I PULLED THE RIGHT LEVEL 1 RESIDUAL STANDARD DEVIATION? I THINK I DID.... I DONT SEE WHAT ELSE IT COULD BE
+
+```{r}
+
+m2 <- lmer(attain ~ deprive + (1 | neighid), data = data)
+summary(m2)
+
+```
+
+### d) Adding more covariates
+
+```{r}
+
+m3 <- lmer(attain ~ deprive  + p7vrq + p7read +
+             + dadocc + dadunemp + daded + momed + male + (1 | neighid), data = data)
+summary(m3)
+
+```
+
+### e) Change in SDs 
+
+The standard deviation of the neighborhood random effect with all covariates added is now 0.082 vs 0.259 in model 2, the standard deviation of the residual is now 0.676 vs 0.901 and the standard error on the fixed effect depravity is now 0.025 vs 0.038 in model 2. The largest change is in the neighborhood standard deviation, in which it decreased (0.082 from 0.259).
+
+### f) Coefficient of determinations $R^2$ 
+In model 2, the overall $R^2$ is 0.191 and the conditional $R^2$ = 0.104.
+
+For model 3, the overall coefficient of determination ($R^2$) is 0.544, and marginal $R^2$ = 0.537, indicating that the majority of the variance in attainment is described by the fixed effects rather than the neighborhood random effect. 
+
+The $R^2$ greatly improved by adding the individual level covariates, indicating that these covarariates are important in explaining variation in student educational attainment.  
+
+```{r}
+##r2 m2 (part c)
+
+performance::r2(m2)
+
+## r2 m3 (part d)
+
+performance::r2(m3)
+
+```
+
+
+\newpage
+## 2. **Model building and method selection**
+
+### a) Incentive pay in lower income schools
+
+Description of approach: 
+
+### b) Richer and poorer districts
+
+Description of approach:
+
+### c) Alternate approach
+
+Description of approach:
+
+
+
