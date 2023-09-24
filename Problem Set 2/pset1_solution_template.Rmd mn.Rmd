@@ -1,0 +1,120 @@
+---
+title: 'PS 2: My amazing solutions'
+output:
+  pdf_document: default
+date: "`r Sys.Date()`"
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align="center" )
+
+# Secret code (e.g., loading packages and data) goes here.
+
+library( tidyverse )
+library(readstata13) # This lets us read STATA files!
+library(lme4)
+#you can add any additional libraries here
+
+```
+
+
+## 1. **Neighborhood effects data**
+
+### a) Random-intercept model
+
+```{r}
+# your model goes here
+```
+
+The between-neighborhood variance is ... 
+
+The within-neighborhood variance is ... 
+
+### b) ICC 
+
+```{r}
+# some code goes here
+```
+
+The ICC is ... This means that ... 
+
+### c) Adding a covariate 
+```{r}
+# your model code goes here
+```
+
+Interpret coefficient estimates here. 
+
+Compared with the model in part (a), the standard deviation of the random intercept ... The level-1 residual ... 
+
+### d) Adding more covariates
+
+```{r}
+# your model code goes here
+```
+
+### e) Change in SDs 
+
+Compared with the model in part (c), the standard deviations ... 
+
+### f) Coefficient of determinations $R^2$ 
+```{r}
+#some code goes here
+```
+
+Your explanation goes here.
+
+
+\newpage
+## 2. **Model building and method selection**
+
+Goal: Describe difference in starting salaries of teachers over a decade from different schools nested in different districts. Depends on characteristics of hiring school--median household income of the neighborhood school is in. (level 1 predictors)
+Level 2 predictors-- district level median household income varies.
+
+Per district--4 to 7 schools with different neighborhood income  (Teachers in each respective school.)
+Sample of schools nested within 50 different districts (Allowing us to do random effects)
+
+### a) Incentive pay in lower income schools
+
+If we just broadly wanted to investigate whether the average teacher salary is predicted by schools income status, we could use a fixed effect model with cluster robust standard errors where data is completely unpooled no district or school is using information from another to predict the line. 
+In this model we would use teacher starting salary as the outcome and regress this on the median household income of the neighborhood each school is in, fitting . Using fixed effects would allow each school to have their own parameter
+
+We are assuming that income has the same relationship with teacher salary across all schools in all districts, but that some some schools may have higher or lower salary starting points, allowing us to fit a line to each school in each district.
+
+The cluster robust standard errors help alllow for heteroskedasticity and take into the clustered data that we are using. 
+
+Outcome: Average Teacher Salary (Continuous) 
+Treatment: (1: High, 0: Low *based on some objective cutoff predicted by neighborhood income )
+
+### b) Richer and poorer districts
+
+Description of approach:
+
+It may be the case that different districts may have different starting points for salary based on income, and thus look like they pay more or less. To investigate this we could use a random intercept model with mixed effects so that we allow the intercept to vary for each district, while holding the slope constant (fixed). Each school $i$ in a given district $j$: 
+
+The level 1 regression would look someting like this: 
+
+$$salary_{ij} = neighboroodincome_[ij] + \epsilon_{ij}\quad with \ \epsilon_{ij}\; \sim \mathcal{N}(0, \sigma^2_y)$$
+where $$\alpha_j=\; \mu + districtincome_j \quad with \; \mu_j \sim \mathcal{N}(0, \sigma^2_\alpha)$$
+
+
+Here we are essentially pulling the school district averages towards a grand mean, reducing the variability for smaller clusters, and are essentially borrowing information from other schools and districts to do this. 
+The con of this is that these estimates will be biased but more stable estimates of each district. 
+
+### c) Alternate approach
+
+
+Description of approach:
+
+Run fixed effects model with cluster robust standard errors for each teacher salary predicted by median district income (aggregate neighborhood incomes into one average per district) and compare teacher salary. Given teacher salary is a level 1 variable (per school) you may need to aggregate teacher salaries to get an average for the district to get around the collinearity issue that could arise. 
+
+The pro of this is that with fixed effects at least, you are allowing each district to be estimated, rather than aggregated as in a traditional OLS. 
+
+A con of this would obviously be loss of precision in our estimates large variance as we are collapsing data. This also means we are making alot of assumptions regarding the intervariation of a county, and only focusing on intra-variation which may minimize inequities that also exist within a county. 
+
+
+
+
+
+
