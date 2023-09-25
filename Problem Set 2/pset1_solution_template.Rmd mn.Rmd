@@ -98,7 +98,6 @@ The level 1 regression would look someting like this:
 $$salary_{ij} = neighboroodincome_[ij] + \epsilon_{ij}\quad with \ \epsilon_{ij}\; \sim \mathcal{N}(0, \sigma^2_y)$$
 where $$\alpha_j=\; \mu + districtincome_j \quad with \; \mu_j \sim \mathcal{N}(0, \sigma^2_\alpha)$$
 
-
 Here we are essentially pulling the school district averages towards a grand mean, reducing the variability for smaller clusters, and are essentially borrowing information from other schools and districts to do this. 
 The con of this is that these estimates will be biased but more stable estimates of each district. 
 

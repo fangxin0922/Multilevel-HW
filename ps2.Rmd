@@ -8,58 +8,63 @@ date: "`r Sys.Date()`"
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, fig.align="center" )
-knitr::opts_knit$set(root.dir = "C:/Users/jenni/Downloads")
-
 library(tidyverse)
 library(readstata13) # This lets us read STATA files!
 library(lme4)
-install.packages("sjstats")
+#install.packages("sjstats")
 library(sjstats)
-
+library(arm)
 ```
 
+
+```{r load dataset}
+data <- read.dta13('./PS 1/neighborhood.dta')
+```
 
 ## 1. **Neighborhood effects data**
 
 ### a) Random-intercept model
 
-The estimated between group variance is 0.202 and the within group variance is 0.804
+The estimated between group neighborhood variance is 0.202 and the within neighborhood variance is 0.804. 
 
 ```{r}
-data <- read.dta13('neighborhood (1).dta')
-
-# your model goes here
-
 m1 <- lmer(attain ~ 1 + (1 | neighid), data = data)
-summary(m1)
 
+summary(m1, digits = 3)
+display(m1, digits = 3) #sd for the between and within. Thinking that attain is a measure of educational attainment and length of schooling, we feel that 3 decimal places is enough for percise without providing spurious precision. 
 ```
+
 ### b) ICC 
 
-The ICC is the the proportion of the variance explained by the grouping structure (neighborhood) in the population (i.e how much variance is explained by the random effect). An ICC of 0.201 indicates that there is fairly little variation between the groups, and most of the variation is at the individual level.
+The ICC is the the proportion of the variance explained by the grouping structure (neighborhood) in the population (i.e how much variance is explained by the neighborhood random effect). An ICC of 0.201 indicates that there is fairly little variation between the neighborhoods, and most of the variation is at the student level. In other words, 20.1% of the total variation is due to neighborhood effects. 
 
 ```{r}
-## By hand. Between group variance / total variance. 
-0.2024/ (0.2024 + 0.8044)
+## By hand. Between group variance / (within group variance + between group variance). 
+sigma.alpha = sigma.hat(m1)$sigma$neighid 
+
+sigma.y = sigma(m1)
+
+ICC = sigma.alpha^2/(sigma.alpha^2 + sigma.y^2)
+
+ICC
 
 ##using sjstats package
 performance::icc(m1)
-
 ```
 
 ### c) Adding a covariate 
 
-Compared with the model in part (a), the standard deviation of the random intercept is 0.295 vs 0.450 (a decrease in the standard deviation of the random intercept once we have added the fixed effect for deprive). The standard deviation of the level-1 residual did not change much, (0.897 in part a and 0.901 in part b).
+Compared with the model in part (a), the standard deviation of the random intercept is 0.295 (after adding deprive) vs 0.450 (before adding deprive); a decrease in the standard deviation of the random intercept once we have added the fixed effect for deprive. **The neighborhood-level variation has declined after adding a level 2 covariate deprive**; deprive can explain some of the between neighborhood variation, which makes sense for a level 2 covariate.
 
-The estimated effect estimate for deprive is -0.521. This indicates that for every unit increase in social deprivation score, there is an estimated 0.521 unit decrease in end of school educational attainment, accounting for clustering by neighborhood. 
+The standard deviation of the level-1 residual did not change much; 0.897 before adding the covariate and 0.901 after adding the covariate. 
 
-*** !!! XIN CAN YOU MAKE SURE I PULLED THE RIGHT LEVEL 1 RESIDUAL STANDARD DEVIATION? I THINK I DID.... I DONT SEE WHAT ELSE IT COULD BE
+The estimated effect estimate for deprive is -0.521. On average, for every unit increase in neighborhood social deprivation score, students at the neighborhood tend to have an estimated 0.521 unit decrease in end of school educational attainment, accounting for clustering by neighborhood. 
 
 ```{r}
-
 m2 <- lmer(attain ~ deprive + (1 | neighid), data = data)
 summary(m2)
 
+display(m2, digits = 3)
 ```
 
 ### d) Adding more covariates
@@ -69,46 +74,88 @@ summary(m2)
 m3 <- lmer(attain ~ deprive  + p7vrq + p7read +
              + dadocc + dadunemp + daded + momed + male + (1 | neighid), data = data)
 summary(m3)
-
+display(m3, digits = 3)
 ```
 
 ### e) Change in SDs 
 
-The standard deviation of the neighborhood random effect with all covariates added is now 0.082 vs 0.259 in model 2, the standard deviation of the residual is now 0.676 vs 0.901 and the standard error on the fixed effect depravity is now 0.025 vs 0.038 in model 2. The largest change is in the neighborhood standard deviation, in which it decreased (0.082 from 0.259).
+Compared to model 2, standard deviation of the neighborhood random effect with all covariates added is now 0.082 (vs 0.259 in model 2). A lot of the between neighborhood variation can be explained by the added student-level covariates. The standard deviation of the residual (within neighborhood variation) is now 0.676 (vs 0.901 in model 2); there is also a decline in within neighborhood variation. The standard error on the fixed effect deprivation declined to 0.025 (vs 0.038 in model 2).
+
 
 ### f) Coefficient of determinations $R^2$ 
-In model 2, the overall $R^2$ is 0.191 and the conditional $R^2$ = 0.104.
 
-For model 3, the overall coefficient of determination ($R^2$) is 0.544, and marginal $R^2$ = 0.537, indicating that the majority of the variance in attainment is described by the fixed effects rather than the neighborhood random effect. 
+For model 2, 10.68% of the variation in the education attainment is explained by the fixed effect of social deprivation score and the random effect of neighborhoods.
+
+For model 3, 53.84% of the variation in the education attainment is explained by the fixed effect of social deprivation score, the fixed effects of all the student-level covariates, and the random effect of neighborhoods.
 
 The $R^2$ greatly improved by adding the individual level covariates, indicating that these covarariates are important in explaining variation in student educational attainment.  
 
 ```{r}
-##r2 m2 (part c)
+total.null = (sigma.alpha^2 + sigma.y^2)
 
-performance::r2(m2)
+get.r2 <- function(model, total.null){
+  sigma.alpha = sigma.hat(model)$sigma$neighid 
 
-## r2 m3 (part d)
+  sigma.y = sigma(model)
 
-performance::r2(m3)
+  total = (sigma.alpha^2 + sigma.y^2)
 
+  r2 = 1 - total/total.null
+
+print(r2)
+}
+
+# total variance for c 
+get.r2(m2, total.null)
+
+# total variance for d 
+get.r2(m3, total.null)
 ```
 
 
 \newpage
 ## 2. **Model building and method selection**
 
+Goal: Describe difference in starting salaries of teachers over a decade from different schools nested in different districts. Depends on characteristics of hiring school--median household income of the neighborhood school is in. (level 1 predictors)
+Level 2 predictors-- district level median household income varies.
+
+Per district--4 to 7 schools with different neighborhood income  (Teachers in each respective school.)
+Sample of schools nested within 50 different districts (Allowing us to do random effects)
+
 ### a) Incentive pay in lower income schools
 
-Description of approach: 
+If we just broadly wanted to investigate whether the average teacher salary is predicted by schools income status, we could use a fixed effect model with cluster robust standard errors where data is completely unpooled no district or school is using information from another to predict the line. 
+In this model we would use teacher starting salary as the outcome and regress this on the median household income of the neighborhood each school is in, fitting . Using fixed effects would allow each school to have their own parameter
+
+We are assuming that income has the same relationship with teacher salary across all schools in all districts, but that some some schools may have higher or lower salary starting points, allowing us to fit a line to each school in each district.
+
+The cluster robust standard errors help alllow for heteroskedasticity and take into the clustered data that we are using. 
+
+Outcome: Average Teacher Salary (Continuous) 
+Treatment: (1: High, 0: Low *based on some objective cutoff predicted by neighborhood income )
 
 ### b) Richer and poorer districts
 
-Description of approach:
+It may be the case that different districts may have different starting points for salary based on income, and thus look like they pay more or less. To investigate this we could use a random intercept model with mixed effects so that we allow the intercept to vary for each district, while holding the slope constant (fixed). Each school $i$ in a given district $j$: 
 
-### c) Alternate approach
+We will use district-level median household income as a district-level covariate for district income. 
 
-Description of approach:
+The level 1 regression would look someting like this: 
+
+$$salary_{ij} = \alpha_j + neighboroodincome_{ij} + \epsilon_{ij}\quad with \ \epsilon_{ij}\; \sim \mathcal{N}(0, \sigma^2_y)$$
+
+where $$\alpha_j=\; \mu + medianhouseholdincome_j \quad with \; \mu_j \sim \mathcal{N}(0, \sigma^2_\alpha)$$
+
+Here we are essentially pulling the school district averages towards a grand mean, reducing the variability for smaller clusters, and are essentially borrowing information from other schools and districts to do this. 
+The con of this is that these estimates will be biased but more stable estimates of each district. 
+
+
+### c) Alternate approach for b 
+Run fixed effects model with cluster robust standard errors for each teacher salary predicted by median district income (aggregate neighborhood incomes into one average per district) and compare teacher salary. Given teacher salary is a level 1 variable (per school) you may need to aggregate teacher salaries to get an average for the district to get around the collinearity issue that could arise. 
+
+The pro of this is that with fixed effects at least, you are allowing each district to be estimated, rather than aggregated as in a traditional OLS. 
+
+A con of this would obviously be loss of precision in our estimates large variance as we are collapsing data. This also means we are making alot of assumptions regarding the intervariation of a county, and only focusing on intra-variation which may minimize inequities that also exist within a county. 
 
 
 
