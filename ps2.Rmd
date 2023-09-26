@@ -29,9 +29,14 @@ The estimated between group neighborhood variance is 0.202 and the within neighb
 
 ```{r}
 m1 <- lmer(attain ~ 1 + (1 | neighid), data = data)
-
-summary(m1, digits = 3)
 display(m1, digits = 3) #sd for the between and within. Thinking that attain is a measure of educational attainment and length of schooling, we feel that 3 decimal places is enough for percise without providing spurious precision. 
+#between variance
+sigma.alpha = sigma.hat(m1)$sigma$neighid 
+sigma.alpha^2 
+
+#within variance
+sigma.y = sigma(m1)
+sigma.y^2 
 ```
 
 ### b) ICC 
@@ -47,9 +52,6 @@ sigma.y = sigma(m1)
 ICC = sigma.alpha^2/(sigma.alpha^2 + sigma.y^2)
 
 ICC
-
-##using sjstats package
-performance::icc(m1)
 ```
 
 ### c) Adding a covariate 
@@ -62,7 +64,6 @@ The estimated effect estimate for deprive is -0.521. On average, for every unit 
 
 ```{r}
 m2 <- lmer(attain ~ deprive + (1 | neighid), data = data)
-summary(m2)
 
 display(m2, digits = 3)
 ```
@@ -73,7 +74,7 @@ display(m2, digits = 3)
 
 m3 <- lmer(attain ~ deprive  + p7vrq + p7read +
              + dadocc + dadunemp + daded + momed + male + (1 | neighid), data = data)
-summary(m3)
+
 display(m3, digits = 3)
 ```
 
