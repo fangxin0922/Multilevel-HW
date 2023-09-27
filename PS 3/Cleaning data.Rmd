@@ -1,0 +1,52 @@
+---
+title: "cleaning data"
+author: "Xin Fang"
+date: "2023-09-27"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Cleaning data
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(haven)
+
+
+# read in the data
+read.csv("~/Desktop/Fall 2023/Multilevel-HW/PS 3/MCC_students.csv") -> dat
+
+
+dat = dplyr::select( dat, "ID", "esafe", "grade", "gender","disc" )
+
+
+dat = filter( dat, !is.na( gender ) )
+table(dat$gender)
+
+dat = filter( dat, gender %in% c( "Female", "Male" ) )
+
+
+dat$grade = str_replace( dat$grade, "th", "" ) # replace "th" with ""
+dat$grade = as.numeric( dat$grade ) # convert from char to num
+
+
+skimr::skim(dat)
+
+ggplot( dat, aes( x = disc, y = esafe ) ) +
+  geom_point() +
+  geom_smooth( method = "lm" ) +
+  labs( x = "Disc", y = "eSafe" )  +
+  facet_wrap( ~ gender )
+
+
+dat <- na.omit(dat)
+
+saveRDS( dat, file="~/Desktop/Fall 2023/Multilevel-HW/PS 3/mycleandata.rds" )
+
+
+```
+
