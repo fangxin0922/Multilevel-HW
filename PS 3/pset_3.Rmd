@@ -151,42 +151,38 @@ Comparing two students of the same individual discrimination score, the one that
 ======================================================================
 ``` {r Q4} 
 
-m4 <- lmer(esafe_std ~ disc_std + disc_mean + gender + grade + grade_mean + (1 + disc_std|ID), dat)
+m4 <- lmer(esafe_std ~ disc_std + disc_mean + gender + grade + grade_mean + (1 |ID), dat)
 
 summary(m4)
 confint(m4, method = c("Wald")) %>% knitr::kable(digits = 3)
-random_effects <- ranef(m4)
-
-# Check the random slope for disc_std
-random_effects$ID$disc_std
 
 ``` 
 
 a) Is there a contextual effect for discrimination with regard to emotional safety?  
 
-Here we are looking at both the fixed effect of discrimination on emotional safety and how the relationship between discrimination and emotional safety varies by school ID. 
 
-The results show that comparing students with the same individual discrimination score, a 1 unit (1 SD in this case) increase in average discrimination score at the school level (disc_mean) is predicted to have a 0.32 unit decrease (-0.49, -0.15) in emotional safety, adjusting for individual grade, school level average grade, and gender (p < 0.0001).
+Yes, we see a contextual effect for discrimination with regard to emotional safety.
 
-We included random effects to allow discrimination to vary by school ID. We see variation in the slope for discrimination at the individual level (disc_std) across the different school IDs. In some cases the slope is negative, while in others it is positive. We can calculate the proportion of the variance explained by including random slopes for individual level discrimination as: 0.009 / (0.009 + 0.759) ≈ 0.012  ≈ 1.12%.
+Comparing two students of the same individual discrimination score, the one that goes to a school whose average discrimination score is 1 SD higher is predicted to have an emotional safety score 0.30 points lower (p = 0.0018).
 
 
 b) Once you take out the contextual effect, if any, does the relationship at the student level of sense of discrimination and emotional safety change?  
 
 ```{r}
-m5 <- lmer(esafe_std ~ disc_std + disc_mean + gender + grade + grade_mean + (1|ID), dat)
+m5 <- lmer(esafe_std ~ disc_std + gender + grade + grade_mean + (1|ID), dat)
 
 summary(m5)
 
 ```
 
-When accounting for the contextual effect, the student level effect of sense of discrimination on emotional safety is -3.66e-01 with SD 2.09e-02 and when we remove the random slope for discrimination the effect is 3.54e-01  with SD 1.08e-02. Removing the contextual effect does not result in a large change in the effect of discrimination on emotional safety at the student level. 
+When accounting for the contextual effect, the student level effect of sense of discrimination on emotional safety is -0.35 with SD 0.011 (p <0.0001) and when we remove the contextual effect is -0.36 and SD 0.011 (p < 0.0001). Removing the contextual effect does not result in a large change in the effect of discrimination on emotional safety at the student level. 
 
 Once you have answered this, reflect on the following:  
+
 c) What, if anything, does it add substantively to do this within-school and contextual effect analysis?  
 
-The within school and contextual effect analysis allows for us to see whether there is variation in the effect of discrimination on emotional safety by school. If we saw that there was a lot of variation in the effect of discrimination and emotional safety across schools, we could investigate at the school level whether there are additional differences that may lead to this variation that we had not previously accounted for. For example, perhaps neighborhood SES is an important predictor that we did not account for, and if included may explain for some of the variation by school. 
+The within school analysis allows us to look at how a change in individual discrimination affects emotional safety within schools. This allows for us to address clustering and account for systematic differences of schools that we may have been unable to measure. 
 
-We also included a random intercept for ID, which allows for us to account for baseline differences in average emotional safety of the different schools. This allows for us to account for clustering within school ID. We can look at the individual modeled intercepts to evaluate whether the average emotional safety varies across schools after accounting for the confounding variables. 
+The contextual effect analysis allows us to look at differences between schools, holding individual scores constant. We are able to look at the effect of school level discrimination score on predicted individual reading comprehension scores. 
 
-Overall, the within school and contextual effect analysis can allow for us to look at variation at the group or cluster level. 
+Overall, these analyses allow us to answer specific research questions in the presence of clustering. 
