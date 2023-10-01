@@ -1,6 +1,6 @@
 ---
 title: 'My Amazing Solutions for Problem Set 3: Inference and Multilevel Modeling'
-author: "Jen, Marshae and Xin"
+author: " "
 date: "`r Sys.Date()`"
 output: pdf_document
 editor_options: 
@@ -14,33 +14,80 @@ editor_options:
 \end{center}
 
 ```{r setup, include=FALSE}
-# clear memory
-rm(list = ls())
 
-#load dataset 
-dat = readRDS( "~/Desktop/Fall 2023/Multilevel-HW/PS 3/mycleandata.rds" )
 #load packages
 library(tidyverse)
 library(lme4)
+install.packages("lmerTest")
 library(lmerTest)
-#install.packages("lmerTest")
 library(ggplot2)
-#install.packages("broom.mixed")
+install.packages("broom.mixed")
 library(broom.mixed)
-#install.packages("texreg")
+install.packages("texreg")
 library(texreg)
 install.packages("dataverse")
 library(dataverse)
+install.packages("skimr")
+library(skimr)
+library(readxl)
+library(haven)
+
 ```
+
+## Cleaning data
+
+```{r}
+dat = dplyr::select( dat, "ID", "esafe", "grade", "gender","disc" )
+
+dat = filter( dat, !is.na( gender ) )
+table(dat$gender)
+
+dat = filter( dat, gender %in% c( "Female", "Male" ) )
+
+dat$grade = str_replace( dat$grade, "th", "" ) # replace "th" with ""
+dat$grade = as.numeric( dat$grade ) # convert from char to num
+
+skimr::skim(dat)
+
+dat <- na.omit(dat)
+
+```
+
+
+```{r saving the dataset}
+
+saveRDS(dat, file="mycleandata.rds")
+
+```
+
 
 1. Present a favorite plot or display from your work
 ====================================================================== 
  
 ```{r Q1}
+dat <- mycleandata
+
+ggplot( dat, aes( x = disc, y = esafe ) ) +
+  geom_point() +
+  geom_smooth( method = "lm" ) +
+  labs( x = "Discrimation", y = "Emotional safety" )  +
+  facet_wrap( ~ gender ) + ggtitle("Association between discrimation and emotional safety by gender") +
+  labs(caption = 
+  " This scatter plot shows the association between students sense of discrimination
+  and emotional safety at school, without accounting for clustering of students
+  within schools. We plotted self-identified male and female gender separately.
+  The blue line represents the estimated regression line. The plots show an increased
+  sense of discrimination is associated with a decreased sense of emotional security.
+") +
+  theme(
+  plot.caption = element_text(hjust = 0)
+  )
 
 ```
 
-This plot... 
+This scatter plot shows the association between students sense of discrimination and emotional safety at school, without accounting for clustering of students within schools. We plotted self-identified male and female gender separately. The blue line represents the estimated regression line. The plots show an increased sense of discrimination is associated with a decreased sense of emotional security.
+
+We chose to show a scatter plot over a histogram as we wanted to visualize the association between the two variables, discrimination and emotional safety, rather than the distributions of the individual variables. 
 
 \newpage
 
@@ -102,20 +149,39 @@ Comparing two students of the same individual discrimination score, the one that
 4. Contextual effects for discrimination?
 ======================================================================
 ``` {r Q4} 
-#your code
+
+m4 <- lmer(esafe_std ~ disc_std + disc_mean + gender + grade + grade_mean + (1 + disc_std|ID), dat)
+
+summary(m4)
+random_effects <- ranef(m4)
+
+# Check the random slope for disc_std
+random_effects$ID$disc_std
+
 ``` 
 
 a) Is there a contextual effect for discrimination with regard to emotional safety?  
 
-Yes/No...
+Here we are looking at both the fixed effect of discrimination on emotional safety and how the relationship between discrimination and emotional safety varies by school ID. We do see variation in the slope for discrimination across the different school IDs. In some cases the slope is negative, while in others it is positive. We can calculate the proportion of the variance explained by including random slopes for discrimination as: 0.009 / (0.009 + 0.759) ≈ 0.012  ≈ 1.12%. The variation in discrimination with regard to emotional safety, as explained by the contextual effect of school ID, is relatively small.
+
 
 b) Once you take out the contextual effect, if any, does the relationship at the student level of sense of discrimination and emotional safety change?  
 
-The relationship does/does not change... 
+```{r}
+m5 <- lmer(esafe_std ~ disc_std + disc_mean + gender + grade + grade_mean + (1|ID), dat)
+
+summary(m5)
+
+```
+
+When accounting for the contextual effect, the student level effect of sense of discrimination on emotional safety is -3.66e-01 with SD 2.09e-02 and when we remove the random slope for discrimination the effect is 3.54e-01  with SD 1.08e-02. Removing the contextual effect does not result in a large change in the effect of discrimination on emotional safety at the student level. 
 
 
 Once you have answered this, reflect on the following:  
 c) What, if anything, does it add substantively to do this within-school and contextual effect analysis?  
 
-It adds/doesn't add...
+The within school and contextual effect analysis allows for us to see whether there is variation in the effect of discrimination on emotional safety by school. If we saw that there was a lot of variation in the effect of discrimination and emotional safety across schools, we could investigate at the school level whether there are additional differences that may lead to this variation that we had not previously accounted for. For example, perhaps neighborhood SES is an important predictor that we did not account for, and if included may explain for some of the variation by school. 
 
+We also included a random intercept for ID, which allows for us to account for baseline differences in average emotional safety of the different schools.This allows for us to account for clustering within school ID. We can look at the individual modeled intercepts to evaluate whether the average emotional safety varies across schools after accounting for the confounding variables. 
+
+Overall, including random effects (slopes and/or intercepts) can allow for us to look at variation at the group or cluster level. 
