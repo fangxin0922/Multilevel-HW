@@ -29,6 +29,8 @@ library(ggplot2)
 library(broom.mixed)
 #install.packages("texreg")
 library(texreg)
+install.packages("dataverse")
+library(dataverse)
 ```
 
 1. Present a favorite plot or display from your work
@@ -44,54 +46,59 @@ This plot...
 
 2. Does sense of emotional safety vary by gender and grade?
 ======================================================================
-Assuming that slopes for gender and grade is the same within schools and between schools, in the population.
-[Your model here!]
+Our model will contain a random intercept for each school, a random slope for gender while including grade as a covariate due to the following reasons: 
+From the data exploration we saw that the data was clustered, therefore our model will include a random intercept for school ID. Since different school have surveys collected from different grades, we decided to control for grade in our model, specially using it as predictor for the random intercept (grade may explain partially why there is school clustered effect). The relationship between emotional safety and gender/grade may vary across schools, therefore we have decided to fit a random slope model. In addition, we will also include grade in our level 1 model to see whether emotional vary by gender. 
 
+The model is as follows:
+$$
+\begin{aligned}
+esafe_{ij} &= \beta_{0j} + \beta_{1j} (gender)_{ij} +\beta_{2} (grade)_{ij}+ \varepsilon_{ij} \\
+\beta_{0j} &= \gamma_{00} +\gamma_{01}\overline{grade}_j + \zeta_{0j} \\
+\beta_{1j} &= \gamma_{10} + \zeta_{1j}
+\end{aligned}
+$$
+Fitting the model: 
 ```{r Q2}
 #standardizing esafe and disc
 dat$esafe_std <- scale(dat$esafe)
 dat$disc_std <- scale(dat$disc)
+dat$gender <- as.factor(dat$gender)
+#calculate mean grade of each school 
+dat <- dat %>% group_by(ID) %>% mutate(grade_mean = mean(grade), disc_mean = mean(disc)) 
 
-#mean centering disc
-dat %>% group_by(ID) %>% mutate(mean_disc = mean(disc)) -> dat
+m2 <- lmer(esafe_std ~ gender + grade + grade_mean +  (1 + gender|ID), dat)
 
-dat <- dat %>%
-  mutate(disc_dev = disc_std - mean_disc)
-
-
-
-
+m2 %>% tidy()
 ```
-The model indicates there are/are not gender differences...
+The model indicates there are gender differences. Controlling for grade, on average females has 0.0916 units increase in the SD of emotional safety score as compared to males. The P-value of 0.003 < 0.05, meaning that the association between gender and emotional safety is statistically significant at 5% level of significance. Controlling for gender, on average each 1 grade higher predicts a 0.0410 units increase in the SD of emotional safety score.
 
 \newpage
 
 3. Do those who feel discriminated against feel less safe?
 ======================================================================
-**Answer**: The statistical model should allow the relationship between emotional safety and feeling discriminated to vary across school.
+**Answer**: The statistical model should allow the relationship between emotional safety and feeling discriminated to vary across school. Since gender and grade are predictors of emotional safety, we will include them in our model to control for them.
+We will use a multilevel model to account for the nested structure of the data.
+The model is as follows:
 $$
 \begin{aligned}
-esafe_{ij} &= \beta_{0j} + \beta_{1j} (disc - \overline{disc})_{ij} + \varepsilon_{ij} \\
-\beta_{0j} &= \gamma_{00} + \gamma_{01} \overline{disc}_j +\zeta_{0j} \\
+esafe_{ij} &= \beta_{0j} + \beta_{1j} (disc)_{ij} +\beta_{2} (gender)_{ij} + \beta_{2} (grade)_{ij} + \varepsilon_{ij} \\
+\beta_{0j} &= \gamma_{00} + \gamma_{01} \overline{disc}_j + \gamma_{02}\overline{grade}_j + \zeta_{0j} \\
 \beta_{1j} &= \gamma_{10} + \zeta_{1j}
 \end{aligned}
 $$
 where $i$ indexes students and $j$ indexes schools.
 ```{r Q3}
-m3 <- lmer(esafe_std ~ disc_dev + mean_disc + (disc_dev|ID), dat)
-m3 %>% tidy() %>% knitr::kable(digits = 3)
+m3 <- lmer(esafe_std ~ disc_std + disc_mean + gender + grade + grade_mean + (1 + disc_std|ID), dat)
+m3 %>% tidy() %>% knitr::kable(digits = 4)
 arm::display(m3)
 #confidence intervals 
 confint(m3, method = c("Wald")) %>% knitr::kable(digits = 3)
 ```
 The model indicates that there is a negative relationship between emotional safety and feeling discriminated against.
-On average, a one-unit increase in SD of discrinimation score predicts a 0.36 (95%CI:-0.402, -0.320) units decrease the SD of emotional safety. This is statistically significant (95% CI does not include 0).
-Among schools, schools with higher mean discrimination scores have lower mean emotional safety scores. 
-On average, a one-unit increase in SD of school mean discrinimation score predicts a 0.87 (95%CI:-0.790, 0.417) units decrease the SD of emotional safety. This is statistically significant (95% CI does not include 0).
+Within schools, on average, a one-unit increase in SD of discrimination score predicts a 0.37 (95%CI:-0.407, -0.324) units **decrease** in the SD of emotional safety, adjusting for gender, grade, and school average grade. This is statistically significant (95% CI does not include 0).
+Comparing two students of the same individual discrimination score, the one that goes to a school whose average discrimination score is 1SD higher is predicted to have 0.32 (95%CI:-0.490, -0.147) units **decrease** in the SD of emotional safety , adjusting for grade, school average grade, and gender. This is also statistically significant (95% CI does not include 0).
 
 \newpage	
-
-
 4. Contextual effects for discrimination?
 ======================================================================
 ``` {r Q4} 

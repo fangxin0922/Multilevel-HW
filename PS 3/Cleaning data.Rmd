@@ -36,6 +36,8 @@ dat$grade = as.numeric( dat$grade ) # convert from char to num
 
 skimr::skim(dat)
 
+dat <- na.omit(dat)
+
 ggplot( dat, aes( x = disc, y = esafe ) ) +
   geom_point() +
   geom_smooth( method = "lm" ) +
@@ -43,8 +45,10 @@ ggplot( dat, aes( x = disc, y = esafe ) ) +
   facet_wrap( ~ gender )
 
 
-dat <- na.omit(dat)
+```
 
+
+```{r saving the dataset}
 saveRDS( dat, file="~/Desktop/Fall 2023/Multilevel-HW/PS 3/mycleandata.rds" )
 
 
