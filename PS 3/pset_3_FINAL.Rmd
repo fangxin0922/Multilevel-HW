@@ -135,16 +135,16 @@ esafe_{ij} &= \beta_{0j} + \beta_{1j} (disc)_{ij} +\beta_{2} (gender)_{ij} + \be
 $$
 where $i$ indexes students and $j$ indexes schools.
 ```{r Q3}
-m3 <- lmer(esafe_std ~ disc_std + disc_mean + gender + grade + grade_mean + (1 + disc_std|ID), dat)
-m3 %>% tidy() %>% knitr::kable(digits = 4)
-summary(m3)
-arm::display(m3)
+m3_b <- lmer(esafe_std ~ disc_dev + disc_mean + gender + grade + grade_mean + (1|ID), dat)
+m3_b %>% tidy() %>% knitr::kable(digits = 4)
+arm::display(m3_b)
 #confidence intervals 
-confint(m3, method = c("Wald")) %>% knitr::kable(digits = 3)
+confint(m3_b, method = c("Wald")) %>% knitr::kable(digits = 3)
 ```
 The model indicates that there is a negative relationship between emotional safety and feeling discriminated against.
-Within schools, on average, a one-unit increase in SD of discrimination score predicts a 0.37 (95%CI:-0.407, -0.324) units **decrease** in the SD of emotional safety, adjusting for gender, grade, and school average grade. This is statistically significant (95% CI does not include 0).
-Comparing two students of the same individual discrimination score, the one that goes to a school whose average discrimination score is 1SD higher is predicted to have 0.32 (95%CI:-0.490, -0.147) units **decrease** in the SD of emotional safety , adjusting for grade, school average grade, and gender. This is also statistically significant (95% CI does not include 0).
+Within schools, on average, a one-unit increase in SD of discrimination score predicts a 0.35 (95%CI:-0.407, -0.324) units **decrease** in the SD of emotional safety, adjusting for gender, grade, and school average grade. This is statistically significant (95% CI does not include 0).
+
+Schools whose average discrimination score is 1SD higher is predicted to have 0.65 (95%CI:-0.490, -0.147) units **decrease** in the SD of emotional safety , adjusting for grade, school average grade, and gender. This is also statistically significant (95% CI does not include 0).
 
 \newpage	
 4. Contextual effects for discrimination?
@@ -191,3 +191,4 @@ The within school analysis allows us to look at how a change in individual discr
 The contextual effect analysis allows us to look at the effect of a group level variable such as mean discrimination on an individual level outcome, controlling for individual level discrimination as well. In other words looking at differences between schools, holding individual discrimination scores constant, we are able to look at the effect of school level discrimination score on predicted individual reading comprehension scores. 
 
 Overall, these analyses allow us to answer specific research questions in the presence of clustering. 
+
