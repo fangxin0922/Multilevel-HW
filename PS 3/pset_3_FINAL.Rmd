@@ -156,16 +156,17 @@ dat<-dat%>%
 ```
 
 ```{r Q3}
-m3_b <- lmer(esafe_std ~ disc_dev + disc_mean + gender + grade + grade_mean + (1|ID), dat)
+m3_b <- lmer(esafe_std ~ disc_dev + disc_mean + gender + grade + grade_mean + (1+disc_dev|ID), dat)
 m3_b %>% tidy() %>% knitr::kable(digits = 4)
 arm::display(m3_b)
 #confidence intervals 
 confint(m3_b, method = c("Wald")) %>% knitr::kable(digits = 3)
 ```
-The model indicates that there is a negative relationship between emotional safety and feeling discriminated against.
-Within schools, on average, a one-unit increase in SD of discrimination score predicts a 0.35 (95%CI:-0.407, -0.324) units **decrease** in the SD of emotional safety, adjusting for gender, grade, and school average grade. This is statistically significant (95% CI does not include 0).
+The model indicates that there is a negative relationship between emotional safety and feeling discriminated against. Also note the are not assuming that the relationship between discrimination and emotional safety is the same across schools, allowing each to vary (have its own slope and its own intercept.)
 
-Schools whose average discrimination score is 1SD higher is predicted to have 0.65 (95%CI:-0.490, -0.147) units **decrease** in the SD of emotional safety , adjusting for grade, school average grade, and gender. This is also statistically significant (95% CI does not include 0).
+Within schools, on average, a one-unit increase in SD of discrimination score predicts a 0.37 (95%CI:-0.407, -0.324) units **decrease** in the SD of emotional safety, adjusting for gender, grade, and school average grade. This is statistically significant (95% CI does not include 0).
+
+Schools whose average discrimination score is 1SD higher are predicted to have 0.67 (95%CI:-0.490, -0.147) units **decrease** in the SD of emotional safety , adjusting for grade, school average grade, and gender. This is also statistically significant (95% CI does not include 0).
 
 \newpage	
 4. Contextual effects for discrimination?
