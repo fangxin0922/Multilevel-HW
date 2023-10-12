@@ -1,0 +1,180 @@
+---
+title: "Section 6: Linear Growth Models"
+author: "Josh Gilbert (adapted from past S43 TFs)"
+date: "`r Sys.Date()`"
+format:
+  pdf:
+    toc: true
+    number-sections: true
+    colorlinks: true
+---
+
+# Warmup
+
+Let's check out the [visualizer](https://lmiratrix.github.io/MLM/rand_slopes_viz.html) for our random slope models and work through the prompts as a group.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = TRUE, tidy = FALSE)
+options(dplyr.summarise.inform = FALSE, digits = 3)
+  
+# load libraries
+library(foreign) #gives us "read.spss" function
+library(lme4)
+library(tidyverse)
+library(arm)
+library(texreg)
+library(ggeffects)
+
+# set ggplot theme
+theme_set(theme_classic())
+
+# clear memory
+rm(list = ls())
+  
+# read time-level data (and drop unnecessary columns)
+dat <- read.spss("vocab1.sav", to.data.frame = TRUE)
+
+# read child-level data
+sdat <- read.spss("vocab2.sav", to.data.frame = TRUE)
+# make the column names for the child-level data lowercase, for consistency
+names(sdat) <- tolower(colnames(sdat))
+
+# join all data to make single "long" dataframe (we prefer long data for analysis)
+dat <- full_join(dat, sdat, by = "pers")
+
+# drop the child level dataframe so we don't get confused
+rm(sdat)
+
+# take a look at our merged data
+head(dat)
+
+# take a very quick look at the relationship between age and vocab:
+ggplot(data = dat, aes(x = age, y = vocab)) +
+  geom_point(alpha = 0.3)
+
+# looks like there's something strange happening with everyone having the exact same measurement at age = 12 months?
+dat$vocab[dat$age == 12]
+
+# make a subset of students where we throw out the suspicious 12 month measurements, and focus on "group 0"
+dat <- dat %>% 
+  filter(age != 12 ) %>% 
+  filter(group == 0)
+```
+
+# Goals for today
+
+1.  Review notation unconditional linear and quadratic growth models
+2.  Review quadratic growth model output in R
+3.  Review useful code for creating pretty plots
+
+# EDA: Empirical Growth Trajectories
+
+Let's start with some EDA. Here, we're plotting the raw measurements from our data with "connect the dots" lines, not plotting fitted growth curve models. This is always the place to start!
+
+```{r plot_1, fig.width=6, fig.height=3}
+plot_1 <- ggplot(data = dat, aes(x = age, y = vocab, group = pers)) +
+  geom_point() + 
+  geom_line() +
+  labs(x = "Age in Months",
+       y = "Vocabulary Words")
+
+plot_1
+```
+
+\newpage
+
+# Activity 1: Growth Model Notation
+
+## (Unconditional) Linear growth model
+
+$$
+\begin{aligned}
+vocab_{ti} &= \pi_{0i} + \pi_{1i} a_{ti} + \epsilon_{ti} \\
+\\
+\epsilon_{ti} &\sim N(0,\sigma^2) \\
+\\
+\pi_{0i} &= \gamma_{00} + u_{0i} \\
+\pi_{1i} &= \gamma_{10} + u_{1i} \\
+\\
+\begin{bmatrix}
+{u_{0i}}\\ 
+{u_{1i}}
+\end{bmatrix} &~\sim N\left( {\left[ {\begin{array}{*{30}{c}}
+{{0}}\\
+{{0}} 
+\end{array}} \right],\left[ {\begin{array}{*{30}{c}}
+{\tau_{00}}&{}\\
+{\tau_{10}}&{\tau_{11}}
+\end{array}} \right]} \right)
+\end{aligned}
+$$
+
+**Define the following in the above model:**
+
+-   Level 1:
+-   Level 2:
+-   $a_{ti}$:
+-   $\pi_{0i}$:
+-   $\pi_{1i}$:
+-   $\beta_{00}$:
+-   $\beta_{10}$:
+-   $\tau_{00}$:
+-   $\tau_{11}$:
+-   $\rho=\frac{\tau_{10}}{\sqrt{\tau_{00}\tau_{11}}}$:
+-   $\epsilon_{ti}$:
+-   $\sigma^2$:
+
+## Fitting and Graphing the Linear Growth Model
+
+The code below fits and graphs the linear growth model. Let's take a moment to connect the output to the Greek and to the graphs, as a group.
+
+```{r}
+# fit the model
+m0 <- lmer(vocab ~ 1 + age + (1 + age|pers), 
+          data = dat)
+
+# display the results
+m0 |> display()
+
+# get the fitted values
+dat <- dat |> 
+  mutate(linear_fit = fitted(m0))
+
+# plot and compare to the empirical data
+ggplot(dat, aes(x = age12, y = linear_fit, color = factor(pers))) +
+  geom_line() +
+  geom_point(aes(y = vocab)) +
+  labs(x = "Age in Months",
+       y = "Vocabulary Words",
+       color = "ID") +
+  theme(legend.position = "bottom")
+```
+
+
+## Model Building Adding Fixed Effects
+
+Add in an a main effect for `sex` and store the result at `m1`.
+
+```{r}
+# code here
+```
+
+Now, let's interact `sex` with `age12`, stored as `m2`.
+
+```{r}
+# code here
+```
+
+Use `screenreg` to tabulate the results.
+
+```{r}
+screenreg(list(m1, m2))
+```
+ 
+
+The code below graphs the interaction model. Let's practice connecting the graph to the output.
+
+```{r}
+ggeffect(m2, terms = c("age12", "sex")) |> 
+  plot()
+```

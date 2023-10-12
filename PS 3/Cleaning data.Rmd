@@ -18,39 +18,47 @@ library(haven)
 
 
 # read in the data
-read.csv("~/Desktop/Fall 2023/Multilevel-HW/PS 3/MCC_students.csv") -> dat
+read.csv("~/Desktop/Fall 2023/Multilevel-HW/PS 3/MCC_students.csv") -> dat1
 
+vars1 <- c("ID", "esafe", "grade", "gender", "disc")
 
-dat = dplyr::select( dat, "ID", "esafe", "grade", "gender","disc" )
+dat1 <- dplyr::select(dat1, vars1)
 
+# convert grade to numeric
+dat1$grade <- as.numeric(gsub("th", "", dat1$grade))
+# substitute ’th’ with ” and convert from character to numeric
+# keep only observations who answered either male or female
+dat1 <- filter(dat1, gender %in% c("Female", "Male"))
+# keep only complete cases
+dat1x <- na.omit(dat1)
+#rename dataset
+dat <- dat1x
+#We have 8,002 observations of 5 variables in the cleaned data set for this assignment
+#Explore the data
+summary(dat$esafe)
+prop.table(table(dat$gender))
+```
 
-dat = filter( dat, !is.na( gender ) )
-table(dat$gender)
-
-dat = filter( dat, gender %in% c( "Female", "Male" ) )
-
-
-dat$grade = str_replace( dat$grade, "th", "" ) # replace "th" with ""
-dat$grade = as.numeric( dat$grade ) # convert from char to num
-
-
-skimr::skim(dat)
-
-dat <- na.omit(dat)
-
-ggplot( dat, aes( x = disc, y = esafe ) ) +
-  geom_point() +
-  geom_smooth( method = "lm" ) +
-  labs( x = "Disc", y = "eSafe" )  +
-  facet_wrap( ~ gender )
-
-
+```{r}
+ggplot(dat, aes(disc, esafe)) +
+geom_jitter(size=0.5, alpha=0.2,
+position=position_jitter(width=0.1, height=0.1)) +
+geom_smooth(method='lm', se=FALSE, na.rm=TRUE, color="black", linewidth=1) +
+geom_smooth(data=filter(dat, gender == 'Female'),
+method='lm', se=FALSE, na.rm=TRUE, color="skyblue", linewidth=.5) +
+geom_smooth(data=filter(dat, gender == 'Male'),
+method='lm', se=FALSE, na.rm=TRUE, color="tomato", linewidth=.5) +
+scale_x_continuous(breaks=seq(1, 5, by=.5)) +
+scale_y_continuous(breaks=seq(1, 4, by=.5)) +
+labs(x="Sense of Discrimination",
+y="Sense of Emotional Safety",
+title="Discrimination and Emotional Safety among Adolescents",
+caption = "Trend lines are for overall sample (black), girls (blue), and boys (red).") +
+theme_minimal()
 ```
 
 
 ```{r saving the dataset}
 saveRDS( dat, file="~/Desktop/Fall 2023/Multilevel-HW/PS 3/mycleandata.rds" )
-
-
 ```
 
