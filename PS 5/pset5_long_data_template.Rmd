@@ -1,0 +1,167 @@
+---
+title: 'My Amazing Solutions to Problem Set 5: Intro to Longitudinal Data'
+author: "ANONYMOUS"
+date: "`r Sys.Date()`"
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = TRUE, tidy = FALSE)
+options(dplyr.summarise.inform = FALSE, digits = 3)
+  
+# load libraries
+library(foreign) #gives us "read.spss" function
+library(lme4)
+library(tidyverse)
+library(arm)
+library(texreg)
+library(ggeffects)
+library(effects)
+
+# set ggplot theme
+theme_set(theme_classic())
+
+# clear memory
+rm(list = ls())
+```
+
+```{r}
+dat<-read.dta("alcuse.dta")
+
+dat
+
+```
+
+# The tasks
+a. Substitute the level—2 models into the level—1 model to obtain the reduced form model.
+
+The reduced form model should be: 
+$$ Y_{tj} = \gamma_{00} + \gamma_{01} w_{1j} + \gamma_{02} w_{2j} + \gamma_{10} + time_{tj}*[\gamma_{11} w_{1j} + \gamma_{12} w_{2j} ]  + (u_{0j}+u_{1j}time_{tj}+ \epsilon_{tj}) $$
+ I think i have fixed effects as 6?, and then variance being three + sigma 2? So 10 parameters? 
+The level 1 model
+$$ Y_{tj} = \pi_{0j} + \pi_{1j} time_{tj} + \epsilon_{tj} $$
+
+and the level 2 models
+$$
+\begin{aligned}
+\pi_{0j} &= \gamma_{00} + \gamma_{01} w_{1j} + \gamma_{02} w_{2j} + u_{0j} \\
+\pi_{1j} &= \gamma_{10} + \gamma_{11} w_{1j} + \gamma_{12} w_{2j} + u_{1j}
+\end{aligned}
+$$
+with $(u_{0j}, u_{1j})$ bivariate normal as usual.]
+
+\bigskip
+
+b. Determine the correct `lmer()` call and fit the model.
+
+we are estimating: 
+
+``` {r linear growth curve}
+#your code here 
+m1<-lmer (alcuse~ 1 + age_14 * (coa + peer) + (1+age_14|id), data=dat)
+
+
+display(mod.b)
+# display the results
+m1|> display()
+```
+
+\bigskip
+
+c. *Succinctly* identify and interpret all the parameter estimates. No more than one sentence per parameter. Make a list, with each item being, e.g., "$\gamma_{00}$ = #, which means blah, blah blah."  
+
+-$\gamma_{00}$= -0.32 is the grand intercept, or initial frequency of alcohol use on average for children in this sample at age 14, holding constant COA and PEER variables.  
+-$\gamma_{01}$= 0.58 is  the difference in the frequency of alcuse comparing children with vs without parents who were diagnosed with alc abuse/dependence , holding peer constant. 
+-$\gamma_{02}$= 0.69 is   the difference in the average frequency of alcuse comparing children with peers who did vs did not use alcohol, holding coa constant.
+
+-$\gamma_{10}$= 0.43  is the rate of change in frequency of alcuse on average for children in the sample, holding constant COA and Peer variables.  
+-$\gamma_{11}$=  -0.01  is the rate of change of alcuse on average for  children in the sample comparing being a child with a parent diagnosed with alc abuse or dependence vs  being a child without a parent diagnosed with alc abuse/dependence, holding peer constant. 
+-$\gamma_{12}$= -0.15  is the rate of change of alcuse on average for all children in the sample comparing being a child with a peer who used alcohol vs  being a child without a peer who used alcohol, holding coa constant.
+-$\tau_{00}$: 0.51 is  is how much an individual child *i* varies from the grand or mean intercept $\gamma_{00}$
+-$\tau_{11}$: 0.39 is how much an individual child *i* varies from the grand or mean slope $\gamma_{00}$
+-$\tau_{10}$:-0.06 is the extent of individual covariation of mean slope and mean intercept for given child. 
+-$\sigma^2$: 0.58 is the variance of all of the residuals for adolescents
+
+\bigskip
+
+d. Is there evidence that children of parents diagnosed with alcohol dependency are different than the other children?  Formally test and then explain any differences.  
+```{r}
+#95% CI of FIXED EFFECTS 
+summary(m1, correlation = F)
+fixef(m1) - 1.96 * se.fixef(m1)
+fixef(m1) + 1.96 * se.fixef(m1)
+```
+
+The 95% CI for the estimate 0.58, is 95% CI: [-0.263, 0.235]
+
+It contain the null 0, which would indicate that we cannot reject the null hypothesis that children with parents with alcohol dependency are NOT different than children with parents without this condition. 
+
+\bigskip
+
+e. Make an 80% confidence interval for the effect of peer use on the growth rate of a kid. Using average growth as a benchmark, interpret both the top and bottom end of your confidence interval in terms of being a large or small effect.
+
+```{r confidence interval}
+#80% Confidence Interval 
+fixef(m1)- 1.28 * se.fixef(m1)
+fixef(m1)+ 1.28 * se.fixef(m1)
+``` 
+80% confidence interval for the effect of peer use on the growth rate of a kid is 80% (0.549, 0.8397)
+
+We are 80% confident that the true growth rate of alcohol use frequency given peer use is between these two bounds 0.549 and 0.8397. 
+The lower bound 0.549 is a slightly smaller effect than the estimate for growth rate given peer usage of alcohol, while the upper bound 0.8397 is a relatively larger effect given the average growth condition on peer usage. 
+
+\bigskip
+
+f. Plot your data.  You can either plot the individual growth curves of all your children, use ``ggeffects`` to make a plot of growth for children of parents diagnosed with alcohol dependency vs. the other children, or some other plot of your choosing that shows your model results.^[See the online textbook for sample code to make these plots.]
+
+``` {r plot}
+# get the fitted values
+dat <- dat |> 
+  mutate(linear_fit = fitted(m1))
+
+# plot and compare to the empirical data
+ggplot(dat, aes(x = age_14, y = linear_fit, color = factor(coa))) +
+  geom_line() +
+  geom_point(aes(y = alcuse)) +
+  labs(x = "Age (years) since first interview",
+       y = "Alcohol Use Frequency among Adolescents",
+       color = "Parent w/ Diagnosed Alcohol Abuse or Dependence") +
+  theme(legend.position = "bottom")
+```
+\bigskip
+
+g. Using the empirical Bayes estimates predictions from your model, estimate the fraction of the study participants who decreased their use of alcohol over the course of the study.
+
+```{r }
+# Bayes estimate predictions 
+
+ests = ranef( m1 )$id
+head( ests )
+```
+
+NOTES: 
+EP--shrinking, but we get estimates for individuals.. they are shrunken towards the grand mean (so less variable) than if you just look at the data 
+Model will say what we expect for each individual based off the model that we fit with 6 parameters. 
+Similar to predict for OLS.
+Bias variance towards the mean.... (biased towards indivdiual, but operate fairly well but better than using highly variable raw) borrowing information from clusters to see what will be, 
+
+EP will give for every kid what growth curve will look like, shrunken towards mean beacuse we are borrowing from other kids (kids with mroe time points) will look more like the mean trajectory 
+Lose some of the variance more precise estimate. 
+```
+\bigskip
+
+h. We can estimate the _reliability_ of our empirical Bayes estimates, which is a measure of how well we think we are measuring the estimate. The reliability is calculated as
+
+$$ reliability = 1 - \frac{\mbox{uncertainty in estimate}}{\mbox{uncertainty in est} + \mbox{variance of effects}} = 1 - \frac{SE^2_j}{SE^2_j + \tau }$$
+where $\tau$ is the variance of the random effects being evaluated (e.g., it would be $\tau_{00}$ if we wanted the reliability of the intercepts and $\tau_{11}$ if we wanted the reliability of the slopes).
+
+What is the reliability of the estimated growth rates in your model?  Does this make you trust or not trust your estimates in part (d), above?^[Usually a reliability of 0.80 or so is considered "reliable" and less than that we have to account for the fact that our estimates are in large part noise.]  
+
+```{r reliability}
+#Your code here
+```
+
+The reliability is...and this makes me [trust/not trust] my estimates...
