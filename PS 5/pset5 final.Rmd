@@ -1,0 +1,163 @@
+---
+title: 'My Amazing Solutions to Problem Set 5: Intro to Longitudinal Data'
+author: "ANONYMOUS"
+date: "`r Sys.Date()`"
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+```{r setup, message=FALSE}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(arm)
+library(knitr)
+library(texreg)
+library(stargazer)
+library(lmtest)
+library(dplyr)
+library(ggeffects)
+library(foreign)
+opts_chunk$set(message=FALSE, warning=FALSE, tidy=FALSE, out.width="4.5in")
+options(digits=3, width = 60)
+# clear workspace
+rm(list = ls())
+
+#read in dataset 
+dat <- read.dta("C:\\Users\\jer403\\Downloads\\alcuse.dta")
+
+
+```
+
+
+# The tasks
+a. Substitute the level—2 models into the level—1 model to obtain the reduced form model.
+
+Reduced model:
+$$ Y_{tj} = \gamma_{00} + \gamma_{01} w_{1j} + \gamma_{02} w_{2j} + u_{0j} + \gamma_{10}time_{tj} + \gamma_{11} w_{1j}time_{tj} + \gamma_{12}time_{tj}+ w_{2j}time_{tj} + u_{1j} + time_{tj} + \epsilon_{tj} $$
+
+The level 1 model
+$$ Y_{tj} = \pi_{0j} + \pi_{1j} time_{tj} + \epsilon_{tj} $$
+
+and the level 2 models
+$$
+\begin{aligned}
+\pi_{0j} &= \gamma_{00} + \gamma_{01} w_{1j} + \gamma_{02} w_{2j} + u_{0j} \\
+\pi_{1j} &= \gamma_{10} + \gamma_{11} w_{1j} + \gamma_{12} w_{2j} + u_{1j}
+\end{aligned}
+$$
+with $(u_{0j}, u_{1j})$ bivariate normal as usual.]
+
+\bigskip
+
+b. Determine the correct `lmer()` call and fit the model.
+
+``` {r linear growth curve}
+mod.b <- lmer(alcuse ~ 1 + coa*age_14 + peer*age_14 + (1 + age_14|id), data = dat)
+
+display(mod.b)
+summary(mod.b)
+
+```
+
+\bigskip
+
+c. *Succinctly* identify and interpret all the parameter estimates. No more than one sentence per parameter. Make a list, with each item being, e.g., "$\gamma_{00}$ = #, which means blah, blah blah."  
+
+1.$\gamma_{00}$ = -0.32 is the grand intercept, or initial frequency of alcohol use on average for children in this sample at age 14, holding constant COA and PEER variables.
+
+2.$\gamma_{01}$ = 0.58, we would expect adolescents with a parent diagnosed with alcohol abuse to have 0.58 units higher frequency of alcohol use as compared to adolescents without an alcohol dependent parent, holding all else constant. 
+
+3.$\gamma_{02}$ = 0.69, for every one unit increase in peer alcohol use, the expected frequency of alcohol use among the student is expected to increase by 0.69, holding all else constant.
+
+4.$\gamma_{10}$ =  0.43  is the average rate of change per year in frequency of alcohol use, holding constant COA and peer variables. 
+
+5.$\gamma_{11}$ = -0.01, the rate of change per year of alcohol use frequency is expected to be 0.01 units lower among adolescents with a parent diagnosed with alcohol abuse compared to adolescents without a parent diagnosed with alcohol abuse, holding all else constant. 
+
+6.$\gamma_{12}$ = -0.15, the rate of change per year of alcohol use frequency is expected to be 0.15 units lower for every one unit increase in alcohol use among peers, holding all else constant. 
+
+7.$\sqrt\tau_{00}$ = 0.51, standard deviation of the random intercept, this is how much an individual child *i* varies from the grand intercept,
+
+8.$\sqrt\tau_{11}$ = 0.39, standard deviation of the random slope, this is how much an individual child *i* varies from the grand or mean slope
+
+9.$\hat\sigma$ = 0.58, residual variation within adolescents. 
+
+10. -$\tau_{10}$:-0.06 is the extent of individual covariation of mean slope and mean intercept for a given child. 
+
+\bigskip
+
+d. Is there evidence that children of parents diagnosed with alcohol dependency are different than the other children?  Formally test and then explain any differences.  
+
+We will perform a t-test on the coefficient term for the interaction between age 14 and coa. The null hypothesis is that $\gamma_{11}$ = 0 
+
+```{r}
+summary(mod.b, correlation = F)
+# get the confidence intervals 
+fixef(mod.b) - 1.96 * se.fixef(mod.b)
+fixef(mod.b) + 1.96 * se.fixef(mod.b)
+
+```
+
+We see that the growth rate of alcohol use frequency is expected to be 0.014 (95% CI: -0.263, 0.235, p-value = 0.912 > 0.05) units lower among adolescents with a parent diagnosed with alcohol abuse compared to adolescents without a parent diagnosed with alcohol abuse. We would fail to reject the null (95% CI captures the null value of 0 and p-value is greater than 0.05), saying that there is not enough evidence that children of parents diagnosed with alcohol dependency are significantly different than the other children. 
+
+\bigskip
+
+e. Make an 80% confidence interval for the effect of peer use on the growth rate of a kid. Using average growth as a benchmark, interpret both the top and bottom end of your confidence interval in terms of being a large or small effect.
+
+```{r confidence interval}
+fixef(mod.b) - 1.28 * se.fixef(mod.b)
+fixef(mod.b) + 1.28 * se.fixef(mod.b)
+``` 
+
+We are 80% confident that for every one unit increase in peer alcohol use, the average adolescent has between -0.261 and -0.038 units decrease in rate of change of alcohol use.  
+
+The average rate of change in the cohort is 0.43 holding constant COA and peer variables. 
+
+The 80% CI (-0.261 and -0.038) around the interaction for age since first interview and peer alcohol use is a very big difference than the average rate in the cohort. -0.038, the upper bound, is closer to the average but still in the opposite direction.
+
+\bigskip
+
+f. Plot your data.  You can either plot the individual growth curves of all your children, use ``ggeffects`` to make a plot of growth for children of parents diagnosed with alcohol dependency vs. the other children, or some other plot of your choosing that shows your model results.^[See the online textbook for sample code to make these plots.]
+
+```{r plot, fig.width=6, fig.height=3}
+dat <- dat |> 
+  mutate(linear_fit = fitted(mod.b))
+
+# plot 
+ggplot(dat, aes(x = age_14, y = linear_fit, color = factor(coa))) +
+  geom_line() +
+  geom_point(aes(y = alcuse)) +
+  labs(x = "Age in years since first interview",
+       y = "Alcohol use frequency",
+       color = "parent diagnosed with alcohol abuse") +
+  theme(legend.position = "bottom")
+```
+This plot shows the expected rate of change of alcohol use frequency for those whose parents were diagnosed with alcohol use disorder vs those whose parents were not.
+
+
+\bigskip
+
+g. Using the empirical Bayes estimates predictions from your model, estimate the fraction of the study participants who decreased their use of alcohol over the course of the study.
+
+```{r }
+display(mod.b)
+
+0.43 - 3*0.12 # still positive
+```
+We know that 99.7% of the data fall within 3SD of mean. 3 SD below the average is still slightly positive (0.07). Therefore, we might say that less than 0.3% of the study participants had decreased use of alcohol over the course of the study. 
+
+\bigskip
+
+h. We can estimate the _reliability_ of our empirical Bayes estimates, which is a measure of how well we think we are measuring the estimate. The reliability is calculated as
+
+$$ reliability = 1 - \frac{\mbox{uncertainty in estimate}}{\mbox{uncertainty in est} + \mbox{variance of effects}} = 1 - \frac{SE^2_j}{SE^2_j + \tau }$$
+where $\tau$ is the variance of the random effects being evaluated (e.g., it would be $\tau_{00}$ if we wanted the reliability of the intercepts and $\tau_{11}$ if we wanted the reliability of the slopes).
+
+What is the reliability of the estimated growth rates in your model?  Does this make you trust or not trust your estimates in part (d), above?^[Usually a reliability of 0.80 or so is considered "reliable" and less than that we have to account for the fact that our estimates are in large part noise.]  
+
+```{r reliability}
+reliability = 1- (0.12^2/(0.12^2 + 0.39))
+reliability 
+```
+
+The reliability is 0.964 and this makes me trust my estimated growth rates. 
