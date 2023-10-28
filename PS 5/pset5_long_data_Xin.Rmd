@@ -118,13 +118,39 @@ dat <- dat |>
   mutate(linear_fit = fitted(mod.b))
 
 # plot 
-ggplot(dat, aes(x = age_14, y = linear_fit, color = factor(coa))) +
+ggplot(dat, aes(x = age_14, y = linear_fit, color = factor(coa), group = factor(id))) +
   geom_line() +
   geom_point(aes(y = alcuse)) +
   labs(x = "Age in years since first interview",
-       y = "Alcohol use frequency",
-       color = "parent diagnosed with alcohol abuse") +
+       y = "Alcohol use frequency", 
+       color = "children of parents diagnosed with alcohol dependency") +
   theme(legend.position = "bottom")
+
+ggeffect(mod.b, terms = c("age_14", "coa")) |>
+plot()
+
+
+
+# Create the ggplot
+ggplot(dat, aes(x = age_14, y = linear_fit)) +
+  # Plot the line for linear_fit
+  geom_line(aes(group = 1), color = "blue") +  # Added group and color for clarity
+  # Plot the points for alcuse
+  geom_point(aes(y = alcuse, color = "Alcohol Use")) +  # Added color legend for points
+  # Add labels and title
+  labs(
+    x = "Age in years since first interview",
+    y = "Alcohol use frequency",
+    title = "Individual Curves for Alcohol Use Frequency"  # Added a title
+  ) +
+  # Customize theme
+  theme(
+    legend.position = "bottom",
+    legend.title = element_text("Legend"),  # Added legend title
+    plot.title = element_text(hjust = 0.5)  # Centered the plot title
+  )
+
+
 ```
 \bigskip
 
