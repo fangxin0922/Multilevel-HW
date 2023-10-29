@@ -1,7 +1,7 @@
 ---
 title: "Final project"
 date: "2023-10-29"
-output: html_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
@@ -60,18 +60,17 @@ $$
 -   $\rho=\frac{\tau_{10}}{\sqrt{\tau_{00}\tau_{11}}}$: correlation between initial status (intercepts $u_{0i}$) and rate of change (slopes $u_{1i}$)
 -   $\epsilon_{ti}$: residual for measurement of PM2.5 at time $t$ for country $i$ - how far a particular measurement is different from the model's prediction
 -   $\sigma^2$: variance of all of the residuals (how much of the data is left unexplained after our model)
-
+***Marshae: it would be great if you could double check on the interpretations and some parameters can be deleted for conciseness***
 Mathematical model (reduced form or lmer command)
 
 ## Lmer Model Formula
-```{r}
 model <- lmer(PM2.5 ~ Change_in_Mobility + Time + GDP + Population_Density + (1 + Time | Country), data = dat)
-```
+
 We included a random intercept for country because the baseline PM2.5 level is different for each country. We include a random slope for mobility because we think that the relationship between mobility change and PM2.5 trends will be different for different countries. We also included a random slope for time due to the following:
 1. Different countries may experience changes in PM2.5 levels differently over time
 2. Including time as a random slope can help capture seasonality by allowing countries to have their own unique seasonal patterns.
 3. Some countries may be experiencing increasing PM2.5 level over the long-term, while others maybe experiencing decreasing PM2.5 trends. Allowing each country to have its own trend in PM2.5 levels over time is a way to account for the heterogeneity between countries in terms of how they respond to time. 
-***Need to reference GPT here***
+***Marshae: Need to reference GPT here, and this part can be shortened***
 
 ## Short description of how you may fit different versions of your model (e.g., adding interaction terms) to answer extensions to your primary research questions
 Interaction term: mobility*GDP 

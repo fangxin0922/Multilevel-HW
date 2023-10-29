@@ -132,7 +132,6 @@ The datasets are not the same. Therefore, we cannot use AIC. The models are not 
 The R-squared for the LG model is slighly lower than the QG model (0.976 vs. 0.857). However, a more complex model will always have higher R-squared. In my opnion, the complex model isn't worth it because we are adding 8 parameters with only about 10% more variation explained by the covariates. In addition, we are lossing data from children who only had one observation
 
 ## 1f. Plot the Growth Curves
-
 ```{r}
 set.seed(123)
 # Select 16 random children based on "id"
