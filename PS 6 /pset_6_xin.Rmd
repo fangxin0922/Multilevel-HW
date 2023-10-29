@@ -28,7 +28,7 @@ theme_set(theme_classic())
 rm(list = ls())
 ## You can use this block if you want to do your wtsa cleaning in your Markdown file. You are also welcome to do your wtsa cleaning in an entirely separate script. 
 # Loading the wtsa
-wts <- read_dta("./childweights.dta")
+wts <- read_dta("/Users/Betty/Desktop/Fall 2023/Multilevel-HW/PS 6 /childweights.dta")
 
 glimpse(wts)
 summary(wts)
@@ -62,6 +62,9 @@ No need to turn in anything here.
 ## 1b. Fit a Linear Growth Model to these wtsa
 
 ```{r}
+# centering age 
+wts$age = wts$age - mean(wts$age)
+
 LG <- lmer(weight ~ 1 + age + gender + (1 + age|id),data = wts)
 display(LG)
 ```
