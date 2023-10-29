@@ -1,0 +1,161 @@
+---
+title: 'Problem Set 6: Longitudinal Data and Three-Level Models'
+author: "S-043 (Fall 2023)"
+date: 'Template'
+header-includes:
+output: pdf_document
+---
+
+
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
+# libraries
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(arm)
+library(knitr)
+library(texreg)
+library(stargazer)
+library(haven)
+
+opts_chunk$set(message=FALSE, warning=FALSE, echo = TRUE, out.width="4.5in")
+
+## You can use this block if you want to do your data cleaning in your Markdown file. You are also welcome to do your data cleaning in an entirely separate script. 
+
+# Loading the data
+wts <- read_dta("/Users/Jenni/Downloads/childweights.dta")
+library(dplyr)
+
+```
+
+# Linear and Quadratic Growth Models
+
+## 1a. Plot
+
+No need to turn in anything here.
+
+## 1b. Fit a Linear Growth Model to these Data
+
+```{r}
+##center the data
+wts$age_center = wts$age - mean(wts$age)
+
+m1 <- lmer(weight ~ age_center + gender + (1 + age_center |id), data = wts)
+
+summary(m1)
+```
+
+## 1c. Fit a Quadratic Growth Model
+
+The model fails because the number of observations is less than the number of random effect parameters. By review of the histogram we can visualize the distribution of number of observations per child, the majority of children have 3 or 4 observations, but some have 5 and some have as few as 1 or 2. 
+
+```{r}
+##squared term
+wts$age_sq = wts$age_center^2
+
+m2 <- lmer(weight ~ age_center + age_sq + gender + (1 + age_center + age_sq|id), data = wts)
+
+table(wts$id) # tally up obs/child
+table(table(wts$id)) # tally the tallys
+# Add number of obs for each group to your data.
+wts = wts %>% group_by(id) %>%
+mutate(n = n())
+
+hist(wts$n)
+
+```
+
+## 1d. Subset the Data to fit the Quadratic Model
+
+We have subset the data to remove students who had only 1 observation, this allowed the quadratic model to converge. In terms of data loss, 4 participants (each with 1 observation so 4 unique observations), were removed. 
+
+```{r}
+subset <- filter(wts, n != 1)
+
+subset$age_center = subset$age - mean(subset$age)
+subset$age_sq = subset$age_center^2
+
+m3 <- lmer(weight ~ age_center + age_sq + gender + (1 + age_center + age_sq|id), data = subset)
+
+summary(m3)
+
+```
+
+## 1e. Linear vs. Quadratic
+For the first comparison, we will work on the same subset dataset for both models (where those with only one observation were removed).
+
+Using a likelihood ratio test (calculated through ANOVA), we find that the quadratic model is a better fit for the data.
+
+We also want to test whether the linear model including all the data (so not subset to omit those with only 1 observation), is a better fit than the quadratic model. Per the R2, the quadratic model is a better fit (0.976 vs 0.856); however, R2 nearly always increases with a more complex model, and the slight increase in R2 may not be worth the loss of data from 4 students. 
+
+```{r}
+# linear model on subset data
+m1_subset <- lmer(weight ~ age_center + gender + (1 + age_center|id), data = subset)
+summary(m1_subset)
+
+## quadratic model again on subset data (same as q1d)
+m3 <- lmer(weight ~ age_center + age_sq + gender + (1 + age_center + age_sq|id), data = subset)
+summary(m3)
+
+anova(m1_subset, m3)
+
+### now test our original linear growth model with ALL the data
+m1 <- lmer(weight ~ age_center + gender + (1 + age_center |id), data = wts)
+summary(m1)
+
+##compare it to our quadratic model. We cant use LRT because the datasets are different. We will use R2
+
+install.packages("MuMIn")
+library(MuMIn)
+
+r.squaredGLMM(m1)
+r.squaredGLMM(m3)
+
+```
+
+## 1f. Plot the Growth Curves
+
+```{r}
+install.packages("ggplot2")
+library(ggplot2)
+
+selected_ids <- sample(subset$id, 16)
+
+# Filter the dataset to include only the selected children
+selected_wts <- subset[subset$id %in% selected_ids, ]
+
+ggplot(data = selected_wts, aes(x = age, y = weight, group = id, color = factor(gender))) +
+  facet_wrap(~ id) +
+  geom_point() +
+  geom_line(aes(y = predict(m3, newdata = selected_wts), color = factor(gender)), linetype = "dashed") + geom_line(aes(y = predict(m1_subset, newdata = selected_wts), color = factor(gender))) +
+ labs(title = "Child weight growth over time",
+x = "Age (months)",
+y = "Predicted weight",
+caption = "Age is centered at 1.08 years. 
+Dashed lines are for the quadratic growth model and solid lines are for linear growth model") +
+theme(axis.text.x = element_text(size = rel(.75), angle = 00))
+```
+
+\newpage
+
+# Piecewise Linear Growth (READS Data)
+
+## 2a. Mathematical Model
+
+[Equation here]
+
+## 2b. Answer RQ1
+
+```{r}
+# code here
+```
+
+## 2c. Answer RQ2
+
+```{r}
+# code here
+```
+
+## 2d. Concept Check 1
+
+[Answer here]

@@ -1,0 +1,67 @@
+## 2a. Mathematical Model
+
+
+$$
+\begin{aligned}
+score_{tjk} &= \beta_{0jk} + \beta_{1jk} school_{tjk} + \beta_{2jk} summer_{tjk} + \varepsilon_{tjk} \\
+\beta_{0jk} &= \gamma_{00k} + \mu_{0jk} \\
+\beta_{1jk} &= \gamma_{10k} + \mu_{1jk} \\
+\beta_{2jk} &= \gamma_{20k} + \mu_{2jk} \\
+\gamma_{00k} &= \alpha_{000} + \nu_{0k} \\
+\gamma_{01k} &= \alpha_{001} + \nu_{1k}\\
+\gamma_{02k} &= \alpha_{002} + \nu_{2k}
+\end{aligned}
+$$
+where $t$ is time $j$ is a given student and $k$ is a given school
+
+where $score_{ijk}$ is the score for the $jth$ student in the $kth$ school at the $t$ time point. 
+
+$\beta_{0jk}$ and $\beta_{1jk}$ are the fixed intercept for school $k$ given time $t$ and  the latter the fixed effect of 'school' time variable  for the $k$ school at a given time point.
+
+$beta_2{jk}$ is the effect of the 'summer' time variable for school $k$ during summer .
+
+$\varepsilon_{ijk}$ represents the (within-person) residual error at the individual observation level.
+
+$\mu_{0jk}$ and $\mu_{1jk}$ and $\mu_{2jk}$ represent random effects at the student level, or how student $j$ differs from the average student in school $k$. 
+
+$\gamma_{00k}$ and $\gamma_{10k}$ and $\gamma_{20k}$  represent average student in school $k$.
+
+$\nu_{0k}$ and $\nu_{1k}$ and $\nu_{2k}$  represent random effects at the school level or rather how school $k$ differs from the average school with respect to the random intercept of the school, or random effect of school and summer respectively. 
+
+$\alpha_{000}$ and $\alpha_{001}$ and $\alpha_{002}$  are the fixed effects at the school level, the average school intercept and  average growth rates given school or summer in the average school. 
+
+## 2b. Answer RQ1: Do students learn more quickly over the summer or school year? 
+
+```{r}
+studs<-READS_student_data
+studs$time=studs$school+studs$summer
+studs$sum2=studs$summer-studs$school
+
+
+m2 <- lmer(score ~ 1 + sum2 + (1+sum2|id) + (1+sum2|sch), data = studs)
+display(m2)
+confint(m2)
+```
+The model predicts an increase of 0.19 units in the 'score' outcome variable for a one unit increase in summer months to the baseline learning growth rate. This is statistically significant with a 95% CI of [-1.82, -1.60] that does not contain the null value. 
+
+The level 1 model for this lmer code is $$score_{ijk}=\beta_{0}+\beta_{1}+summer_{ijk}+\varepsilon_{ijk}$$
+where summer is summer months minus school months. 
+
+## 2c. Answer RQ2: Do students rates of growth depend on student level poverty?
+
+```{r}
+m_3 <- lmer(score ~ 1 + sum2*frl + (1 + sum2|id) + (1 + sum2:frl|sch),
+                   data = studs)
+display(m_3)
+confint(m_3)
+```
+
+Note that we are assuming that free and reduced lunch eligibility for a student i may vary in across schools, but not within schools (as indicated by the inclusion of free or reduced lunch variable into random slope for schools but NOT for individuals)
+
+The value for 0.23 for the interaction between free and reduced lunch and our new summer variable as an increment to the baseline learning growth rate  represents the additional change in 'score' for each one-unit change in summer months given levels of free  or rather with respect to the interaction with students who have free or reduced lunch compared to those who do not have free or reduced lunch eligibility across schools!
+
+
+## 2d. Concept Check 1
+
+It would be theoretically possible but we would run into several issues with this more complex model that maybe unnecessary.
+We would more than likely have issues with multidisciplinary in the model, given the imbalance between some schools having free or reduced lunch eligibility for ALL of their students and some schools not having any students who are not eligible reducing our stability of our model, and leading to loss of precision potentially. With respect to modeling a random slope which is intent on showcasing the variability between schools (i.e how much different a school is from another school, and how this variability impacts the outcome of student reading scores leading to potential convergence issues as we do not have enough observations to estimate meaningful random effects within the higher unit(school level). 
