@@ -73,9 +73,9 @@ display(LG)
 
 ```{r}
 wts$agesq = wts$age^2
-  
-QG <- lmer(weight ~ 1 + age + agesq * gender + (1 + age + agesq|id),
-data = wts)
+
+#The following code will not run
+#QG <- lmer(weight ~ 1 + age + agesq * gender + (1 + age + agesq|id), data = wts)
 
 table( wts$id ) # tally up obs/child
 table( table( wts$id ) ) # tally the tallys
@@ -140,29 +140,21 @@ selected_ids <- sample(wts$id, 16)
 
 # Filter the wtsaset to include only the selected children
 selected_wts <- wts[wts$id %in% selected_ids, ]
+
 # Create a scatterplot with growth curves
 ggplot(data = selected_wts, aes(x = age, y = weight, group = id, color = factor(gender))) +
+  facet_wrap(~ id) +
   geom_point() +
-  geom_line(aes(y = predict(LG, newdata = selected_wts), color = factor(gender)), linetype = "dashed") +
   geom_line(aes(y = predict(QG, newdata = selected_wts), color = factor(gender)), linetype = "dashed") +
-  labs(x = "Age (years)", y = "Weight (kg)",
-       title = "Weight vs. Age for 16 Randomly Selected Children") +
-  theme_minimal()
+  geom_line(aes(y = predict(LG, newdata = selected_wts), color = factor(gender))) +
+ labs(title = "Child weight growth over time. Dashed lines are for the quadratic growth model and solid lines are for linear growth model",
+x = "Age (months)",
+y = "Predicted weight",
+caption = "Age is centered at 1.08 years") +
+theme(axis.text.x = element_text(size = rel(.75), angle = 00))
 
 
 
-# Assuming you have already fitted linear and quadratic models, replace these with your actual models
-linear_model <- lm(weight ~ age + gender, data = selected_wts)
-quadratic_model <- lm(weight ~ poly(age, 2) * gender, data = selected_wts)
-
-# Create a scatterplot with growth curves, color by model and then by gender
-ggplot(data = selected_wts, aes(x = age, y = weight, group = id, color = factor(gender))) +
-  geom_point() +
-  geom_line(aes(y = predict(LG, newdata = selected_wts)), linetype = "dashed") +
-  geom_line(aes(y = predict(QG, newdata = selected_wts))) +
-  labs(x = "Age (years)", y = "Weight (kg)",
-       title = "Weight vs. Age for 16 Randomly Selected Children") +
-  theme_minimal()
 ```
 
 \newpage
