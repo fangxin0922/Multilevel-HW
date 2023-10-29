@@ -16,7 +16,7 @@ where $t$ is time $j$ is a given student and $k$ is a given school
 
 where $score_{ijk}$ is the score for the $jth$ student in the $kth$ school at the $t$ time point. 
 
-$\beta_{0jk}$ and $\beta_{1jk}$ are the fixed intercept for school $k$ given time $t$ and  the latter the fixed effect of 'school' time variable  for the $k$ school at the a given time point.
+$\beta_{0jk}$ and $\beta_{1jk}$ are the fixed intercept for school $k$ given time $t$ and  the latter the fixed effect of 'school' time variable  for the $k$ school at a given time point.
 
 $beta_2{jk}$ is the effect of the 'summer' time variable for school $k$ during summer .
 
