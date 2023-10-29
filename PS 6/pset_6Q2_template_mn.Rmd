@@ -69,7 +69,7 @@ display(m_3)
 
 Note that we are assuming that free and reduced lunch eligibility for a student j may vary in across schools, but not within schools (as indicated by the inclusion of free or reduced lunch variable into random slope for schools but NOT for individuals)
 
-The value for 0.37 for the interaction between free and reduced lunch and our new summer variable as an increment to the baseline learning growth rate  represents the additional change in 'score' for each one-unit change in summer months given levels of free  or rather with respect to the interaction with students who have free or reduced lunch compared to those who do not have free or reduced lunch eligibility across schools!
+The positive value of 0.37 means that there is between school variability in the interaction effect between free and reduced lunch and the effect of summer (months) on the learning scores for students In other words, the influence of the interaction between free or reduced lunch eligibility (frl) and the difference variable summer 2 on student scores differs across schools. This difference is above what is explained by the fixed effects interaction in the model, as well as the fixed effects of frl and summer months (time) in the variation of student scores.  
 
 
 ## 2d. Concept Check 1
