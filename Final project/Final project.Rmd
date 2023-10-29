@@ -50,7 +50,7 @@ $$
 -   $\pi_{0i}$: a country's baseline PM2.5 level, i.e., \# PM2.5 level at $time_{ti}$ = 0 and $mobility_{ti}$ = 0
 -   $\pi_{1i}$: an country's PM2.5 change rate per unit of time, i.e., expected \# PM2.5 change per day
 -   $\pi_{2i}$: an country's PM2.5 change rate per unit of mobility, i.e., expected \# PM2.5 change per unit change in mobility
--   $\gamma_{00}$: the "grand intercept" - mean baseline PM2.5 for all countries (when percent change in mobility and time since February 6, 2020 are 0)***for the grand intercept to be meaningful, time should be days from the baseline (ie. one of the day from January 3 to February 6)***)
+-   $\gamma_{00}$: the "grand intercept" - mean baseline PM2.5 for all countries (when percent change in mobility and time since February 6, 2020 are 0)
 -   $\gamma_{01}$: the slope for GDP - mean PM2.5 change rate for each unit increase in GDP for all countries
 -   $\gamma_{02}$: the slope for population density - mean PM2.5 change rate for each unit increase in population density for all countries
 -   $\gamma_{10}$: the "grand slope" - mean PM2.5 change rate per day for all countries
@@ -65,16 +65,16 @@ Mathematical model (reduced form or lmer command)
 
 ## Lmer Model Formula
 ```{r}
-model <- lmer(PM2.5 ~ Change_in_Mobility + Time + GDP + Population_Density + (1 + Time | Country) + (1 | Time), data = dat)
+model <- lmer(PM2.5 ~ Change_in_Mobility + Time + GDP + Population_Density + (1 + Time | Country), data = dat)
 ```
 We included a random intercept for country because the baseline PM2.5 level is different for each country. We include a random slope for mobility because we think that the relationship between mobility change and PM2.5 trends will be different for different countries. We also included a random slope for time due to the following:
 1. Different countries may experience changes in PM2.5 levels differently over time
 2. Including time as a random slope can help capture seasonality by allowing countries to have their own unique seasonal patterns.
 3. Some countries may be experiencing increasing PM2.5 level over the long-term, while others maybe experiencing decreasing PM2.5 trends. Allowing each country to have its own trend in PM2.5 levels over time is a way to account for the heterogeneity between countries in terms of how they respond to time. 
-
 ***Need to reference GPT here***
 
 ## Short description of how you may fit different versions of your model (e.g., adding interaction terms) to answer extensions to your primary research questions
+Interaction term: mobility*GDP 
 
 ## Justification of using MLM or cluster-robust approaches (depending on what you are doing). Is MLM needed for your project? Or do you just like to use it?
 In this study, we intend to look at how mobility (as a proxy of how strict COVID lock down policy is) might influence PM2.5 levels over time. Our study is a time-series study with repeated measures of the PM2.5 and mobility change from Feb to Oct 2020. Therefore, a growth model is needed for our project. The measurements of mobility and PM2.5 are clustered within countries. Therefor, MLM is also needed for our project. 
