@@ -5,8 +5,6 @@ wtse: 'Template'
 header-includes:
 output: pdf_document
 ---
-
-
 ```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
 # libraries
 library(tidyverse)
@@ -29,131 +27,112 @@ rm(list = ls())
 ## You can use this block if you want to do your wtsa cleaning in your Markdown file. You are also welcome to do your wtsa cleaning in an entirely separate script. 
 # Loading the wtsa
 wts <- read_dta("/Users/Betty/Desktop/Fall 2023/Multilevel-HW/PS 6 /childweights.dta")
-
-glimpse(wts)
-summary(wts)
 ```
 
 # Linear and Quadratic Growth Models
 
 ## 1a. Plot
-```{r results = 'hide'}
-set.seed(123)
-
-# Load the ggplot2 library
-library(ggplot2)
-
-# Select 16 random children based on "id"
-selected_ids <- sample(wts$id, 16)
-
-# Filter the wtsaset to include only the selected children
-selected_wts <- wts[wts$id %in% selected_ids, ]
-
-# Create a scatter plot with growth lines using ggplot2
-ggplot(data = selected_wts, aes(x = age, y = weight, group = id)) +
-  geom_point() +
-  geom_line() +
-  labs(x = "Age (years)", y = "Weight (kg)", title = "Weight vs. Age for 16 Randomly Selected Children") +
-  theme_minimal()
-```
 
 No need to turn in anything here.
 
-## 1b. Fit a Linear Growth Model to these wtsa
+## 1b. Fit a Linear Growth Model to these Data
 
 ```{r}
-# centering age 
-wts$age = wts$age - mean(wts$age)
+##center the data
+wts$age_center = wts$age - mean(wts$age)
 
-LG <- lmer(weight ~ 1 + age + gender + (1 + age|id),data = wts)
-display(LG)
+m1 <- lmer(weight ~ age_center + gender + (1 + age_center |id), data = wts)
+
+summary(m1)
 ```
 
 ## 1c. Fit a Quadratic Growth Model
 
+The model fails because the number of observations is less than the number of random effect parameters. By review of the histogram we can visualize the distribution of number of observations per child, the majority of children have 3 or 4 observations, but some have 5 and some have as few as 1 or 2. 
+
 ```{r}
-wts$agesq = wts$age^2
+##squared term
+wts$age_sq = wts$age_center^2
 
-#The following code will not run
-#QG <- lmer(weight ~ 1 + age + agesq * gender + (1 + age + agesq|id), data = wts)
+#the model below will not run
+#m2 <- lmer(weight ~ age_center + age_sq + gender + (1 + age_center + age_sq|id), data = wts)
 
-table( wts$id ) # tally up obs/child
-table( table( wts$id ) ) # tally the tallys
-# Add number of obs for each group to your wtsa.
-wts = wts %>% group_by( id ) %>%
-mutate( n = n() )
+table(wts$id) # tally up obs/child
+table(table(wts$id)) # tally the tallys
+# Add number of obs for each group to your data.
+wts = wts %>% group_by(id) %>%
+mutate(n = n())
+
+hist(wts$n)
 ```
 
-Distribution of the number of observations per child: Most children have 2 to 4 observations. A few has 1 or 5 observations, 
+## 1d. Subset the Data to fit the Quadratic Model
 
-1  2  3  4  5 
-4 19 27 15  3 
- 
-## 1d. Subset the data to fit the Quadratic Model
+We have subset the data to remove students who had only 1 observation, this allowed the quadratic model to converge. In terms of data loss, 4 participants (each with 1 observation so 4 unique observations), were removed. 
 
 ```{r}
-# Remove children with only one observation
-id_counts <- table( wts$id )
+subset <- filter(wts, n != 1)
 
-# Find the ids that appear more than once
-ids_to_keep <- as.numeric(names(id_counts[id_counts > 1]))
+subset$age_center = subset$age - mean(subset$age)
+subset$age_sq = subset$age_center^2
 
-# Filter the dataframe to keep only rows with ids that appear more than once
-wts <- wts[wts$id %in% ids_to_keep, ]
+m3 <- lmer(weight ~ age_center + age_sq + gender + (1 + age_center + age_sq|id), data = subset)
 
+summary(m3)
 
-QG <- lmer(weight ~ 1 + age + agesq * gender + (1 + age + agesq|id),
-data = wts)
-display(QG)
 ```
 
 ## 1e. Linear vs. Quadratic
+For the first comparison, we will work on the same subset dataset for both models (where those with only one observation were removed).
+
+Using a likelihood ratio test (calculated through ANOVA), we find that the quadratic model is a better fit for the data.
+
+We also want to test whether the linear model including all the data (so not subset to omit those with only 1 observation), is a better fit than the quadratic model. Per the R2, the quadratic model is a better fit (0.976 vs 0.856); however, R2 nearly always increases with a more complex model, and the slight increase in R2 may not be worth the loss of data from 4 students. 
 
 ```{r}
-display(LG) #6
-display(QG) #14
+# linear model on subset data
+m1_subset <- lmer(weight ~ age_center + gender + (1 + age_center|id), data = subset)
+summary(m1_subset)
 
-#calculate R-squared 
-install.packages("MuMIn")
+## quadratic model again on subset data (same as q1d)
+m3 <- lmer(weight ~ age_center + age_sq + gender + (1 + age_center + age_sq|id), data = subset)
+summary(m3)
+
+anova(m1_subset, m3)
+
+### now test our original linear growth model with ALL the data
+m1 <- lmer(weight ~ age_center + gender + (1 + age_center |id), data = wts)
+summary(m1)
+
+##compare it to our quadratic model. We can't use LRT because the datasets are different. We will use R2
+# install.packages("MuMIn")
 library(MuMIn)
 
-rsquared <- r.squaredGLMM(QG)
-
-# Print the R-squared value
-cat("R-squared:", rsquared, "\n")
-
-rsquared <- r.squaredGLMM(LG)
-
-# Print the R-squared value
-cat("R-squared:", rsquared, "\n")
+r.squaredGLMM(m1)
+r.squaredGLMM(m3)
 
 ```
-The datasets are not the same. Therefore, we cannot use AIC. The models are not nested. Therefore,we cannot use LRT. 
-The R-squared for the LG model is slighly lower than the QG model (0.976 vs. 0.857). However, a more complex model will always have higher R-squared. In my opnion, the complex model isn't worth it because we are adding 8 parameters with only about 10% more variation explained by the covariates. In addition, we are lossing data from children who only had one observation
 
 ## 1f. Plot the Growth Curves
+
 ```{r}
-set.seed(123)
-# Select 16 random children based on "id"
-selected_ids <- sample(wts$id, 16)
+library(ggplot2)
 
-# Filter the wtsaset to include only the selected children
-selected_wts <- wts[wts$id %in% selected_ids, ]
+selected_ids <- sample(subset$id, 16)
 
-# Create a scatterplot with growth curves
+# Filter the dataset to include only the selected children
+selected_wts <- subset[subset$id %in% selected_ids, ]
+
 ggplot(data = selected_wts, aes(x = age, y = weight, group = id, color = factor(gender))) +
   facet_wrap(~ id) +
   geom_point() +
-  geom_line(aes(y = predict(QG, newdata = selected_wts), color = factor(gender)), linetype = "dashed") +
-  geom_line(aes(y = predict(LG, newdata = selected_wts), color = factor(gender))) +
- labs(title = "Child weight growth over time. Dashed lines are for the quadratic growth model and solid lines are for linear growth model",
+  geom_line(aes(y = predict(m3, newdata = selected_wts), color = factor(gender)), linetype = "dashed") + geom_line(aes(y = predict(m1_subset, newdata = selected_wts), color = factor(gender))) +
+ labs(title = "Child weight growth over time",
 x = "Age (months)",
 y = "Predicted weight",
-caption = "Age is centered at 1.08 years") +
+caption = "Age is centered at 1.08 years. 
+Dashed lines are for the quadratic growth model and solid lines are for linear growth model") +
 theme(axis.text.x = element_text(size = rel(.75), angle = 00))
-
-
-
 ```
 
 \newpage
@@ -162,41 +141,64 @@ theme(axis.text.x = element_text(size = rel(.75), angle = 00))
 
 ## 2a. Mathematical Model
 
-[Equation here]
 
-## 2b. Answer RQ1
+$$
+\begin{aligned}
+score_{tjk} &= \beta_{0jk} + \beta_{1jk} school_{tjk} + \beta_{2jk} summer_{tjk} + \varepsilon_{tjk} \\
+\beta_{0jk} &= \gamma_{00k} + \mu_{0jk} \\
+\beta_{1jk} &= \gamma_{10k} + \mu_{1jk} \\
+\beta_{2jk} &= \gamma_{20k} + \mu_{2jk} \\
+\gamma_{00k} &= \alpha_{000} + \nu_{0k} \\
+\gamma_{10k} &= \alpha_{100} + \nu_{1k}\\
+\gamma_{20k} &= \alpha_{200} + \nu_{2k}
+\end{aligned}
+$$
+where $t$ is time $j$ is a given student and $k$ is a given school
 
-```{r cache = TRUE}
-studs = readRDS("./READS_student_data.Rds")
+where $score_{ijk}$ is the score for the $jth$ student in the $kth$ school at the $t$ time point. 
 
-#define a new summer variable as the different between summer and school
-studs$summer  = studs$summer - studs$school
-m1 <- lmer(score ~ 1 + summer +
-(1 + summer|id) +
-(1 + summer|sch),
-data=studs)
-display(m1)
-confint(m1)
-```
-The different in growth rate between summer and school year is statistically significant with 95%CI of -1.816, -1.594.
+$\beta_{0jk}$ and $\beta_{1jk}$ and $beta_2{jk}$ is the grand intercept or average across all schools, as well as the average  learning rate during school months and for summer months respectively. 
 
-## 2c. Answer RQ2
+$\varepsilon_{ijk}$ represents the (within-person) residual error at the individual observation level.
 
-```{r cache = TRUE}
-m2 <- lmer(score ~ 1 + summer*frl +
-(1 + summer|id) + #frl does not vary within students
-(1 + summer*frl|sch),
-data=studs)
+$\mu_{0jk}$ and $\mu_{1jk}$ and $\mu_{2jk}$ represent random effects at the student level, or how student $j$ differs from the average student in school $k$. 
 
+$\gamma_{00k}$ and $\gamma_{10k}$ and $\gamma_{20k}$  represent average student intercept and growth rates (for school months and summer months respectively) in school $k$.
+
+$\nu_{0k}$ and $\nu_{1k}$ and $\nu_{2k}$  represent random effects at the school level or rather how school $k$ differs from the average school with respect to the random intercept of the school, or random effect of school and summer months on learning rates respectively. 
+
+## 2b. Answer RQ1: Do students learn more quickly over the summer or school year? 
+
+```{r}
+studs <- readRDS("~/Desktop/Fall 2023/Multilevel-HW/PS 6 /READS_student_data.Rds")
+
+studs$sum2=studs$summer-studs$school
+
+
+m2 <- lmer(score ~ 1 + sum2 + (1+sum2|id) + (1+sum2|sch), data = studs)
 display(m2)
+confint(m2)
 ```
-At school level, we are including 4 random effects: random effect by free lunch, random effect by growth rate, random intercept and random growth rate by free lunch. 
+The model predicts an increase of 0.19 units in the 'score' outcome variable for a one unit increase in summer months to the baseline learning growth rate. This is statistically significant with a 95% CI of [-1.82, -1.60] that does not contain the null value. 
 
-At students level, since free lunch dose not vary within students, we did not add a random effect by free lunch at the student level. 
+The level 1 model for this lmer code is $$score_{tjk}=\beta_{0jk}+\beta_{1jk}*summer_{tjk}+\varepsilon_{tjk}$$
+where summer is summer months minus school months. 
+
+## 2c. Answer RQ2: Do student's rates of growth depend on student level poverty?
+
+```{r}
+m_3 <- lmer(score ~ 1 + sum2*frl + (1 + sum2|id) + (1 + sum2*frl|sch),
+                   data = studs)
+display(m_3)
+
+```
+
+Note that we are assuming that free and reduced lunch eligibility for a student j may vary in across schools, but not within schools (as indicated by the inclusion of free or reduced lunch variable into random slope for schools but NOT for individuals)
+
+The positive value of 0.37 means that there is between school variability in the interaction effect between free and reduced lunch and the effect of summer (months) on the learning scores for students In other words, the influence of the interaction between free or reduced lunch eligibility (frl) and the difference variable summer 2 on student scores differs across schools. This difference is above what is explained by the fixed effects interaction in the model, as well as the fixed effects of frl and summer months (time) in the variation of student scores.  
+
 
 ## 2d. Concept Check 1
 
-Theoretically, it will be possible. We can still force to add a random effect of FRL as the school level. However, since either almost all or no students receive FRL in a specific school, we will see a very small SD for the random effect of FRL at the school level. We will also be adding unnecessary complexity to our model. M2 has 4 fixed effects, 1 level 1 variance term, 2 level 2 variance terms (and 1 cov), 4 level 3 variance terms (6 covs), summing up to a total of 18 parameters!!
-
-M1 has 2 fixed effects, 1 level 1 variance term, 2 level 2 variance terms (and 1 cov), 2 level 3 variance terms (and 1 cov). Giving us a total of just 9 parameters. 
-
+It would be theoretically possible but we would run into several issues with this more complex model that may be unnecessary.
+We would more than likely have issues with multidisciplinary in the model, given the imbalance between some schools having free or reduced lunch eligibility for ALL of their students and some schools not having any students who are not eligible reducing the stability of our model, and leading to loss of precision potentially. With respect to modeling a random slope which is intent on showcasing the variability between schools (i.e how much different a school is from another school, and how this variability impacts the outcome of student reading scores leading to potential convergence issues as we do not have enough observations to estimate meaningful random effects within the higher unit (school level).   
