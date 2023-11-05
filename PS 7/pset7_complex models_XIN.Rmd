@@ -21,7 +21,7 @@ library(readstata13)
 library(ggsci) # for cool color pallets
 
 
-dat = readRDS( "cleaned_data.rds" )
+dat = readRDS( "./PS 7/cleaned_data.rds" )
 
 head( dat )
 
@@ -84,33 +84,95 @@ qplot( coef(M3)$lhw_id[[1]] )
 # 1. Some code review questions
 
 a) For the cleaned and prepared data, what is the `EN` variable and how was it made?
+EN is a binary variable, in which "Co" means that enhanced nutrition (EN) was NOT received (i.e, either control or RS) and "Tx" means that EN was received (i.e, either EN or RS + EN). 
+
+```{r}
+#table( dat$EN, dat$treatment.f )
+```
 
 b) What was done with children with missing outcome data?
+Children with missing outcome (missing ch_haz) were dropped.Code that used to drop children with missing outcome is referenced below:  
+
+```{r}
+# dat <- filter( dat,
+#                !is.na( ch_stunted ),
+#                !is.na( ch_haz ) )
+```
 
 c) What are the `mtime` and `time.f` variables and how are they different?
+Mtime and time.f represent **months since baseline**. For example, mtime=0 means that data was collected at baseline and mtime=6 means that data collected at 6 months since baseline. mtime is a numeric variable, while time.f is a factor variable. 
+
+```{r}
+#class(dat$mtime)
+#class(dat$time.f)
+```
 
 \newpage 
 
 # 2. Evaluate potential model fit
 
-[Your explanation here]
+Looking at the average HAZ and proportion of children stunted across survey waves, linear growth model does not seem to be completely appropriate. The trajectory of both average HAZ and stunting seem to be non-linear, where both the average HAZ and proportion of children start to become more steady from 12 month to 24 month. However, fitting linear models may not lead to huge issue because the trajectory are still very roughly linear. 
 
 \newpage 
 
 # 3. Identify a mathematical model
 
-[Your model here]
+```{r}
+M1 = lmer(ch_haz ~ mtime * EN  + (1 + mtime|ch_id) + (1|lhw_id), data=dat,
+              control = lmerControl(optimizer = "bobyqa"))
+```
+
+$$
+\begin{aligned}
+y_{ijk} &= \beta_{0jk} + \beta_{1jk} mtime_{tjk} + \varepsilon_{tjk} \\
+\\
+\varepsilon_{tjk} &\sim N(0,\sigma^2) \\
+\beta_{0jk} &= \gamma_{00k} + \mu_{jk} \\
+\beta_{1jk} &= \gamma_{10k} + \gamma_{11k} EN_{jk} + \mu_{jk}  \\
+\gamma_{00k} &= \alpha_{000} + \nu_k
+\\
+\begin{bmatrix}
+{u_{0i}}\\ 
+{u_{1i}}
+\end{bmatrix} &~\sim N\left( {\left[ {\begin{array}{*{30}{c}}
+{{0}}\\
+{{0}} 
+\end{array}} \right],\left[ {\begin{array}{*{30}{c}}
+{\tau_{00}}&{}\\
+{\tau_{10}}&{\tau_{11}}
+\end{array}} \right]} \right)\\
+\nu_{tjk} &\sim N(0,\sigma_1^2) \\
+\end{aligned}
+$$
+-   Level 1: time, measured in months since baseline
+-   Level 2: individual children
+-   Level 3: Lady health worker
+-   $a_{tjk}$: months since baseline at measurement point *t* for children *j* with lady health worker *k*
 
 \newpage 
 
 # 4. Make a prediction interval
+The 95% prediction interval is -3.54 and 1.14. There is a large amount of individual variation.
 
 ```{r prediction interval}
+# Extract fixed effects
+fixed_effects <- fixef(M1)
+
+# Average outcome for children in the control group for median LWH at baseline (mtime = 0 and EN = 0 )
+display(M1)
+sd_intercept <- 1.17
+#random_effects <- ranef(M1)$ch_id
+#sd_intercept <- sd(random_effects$`(Intercept)`)
+# Calculate predicted outcomes
+# For a child with a random intercept 2 SD above the average
+predicted_high <- fixed_effects[1] + (2 * sd_intercept)
+predicted_high
+# For a child with a random intercept 2 SD below the average
+predicted_low <- fixed_effects[1] - (2 * sd_intercept)
+predicted_low
+# The predicted outcomes are for the baseline (intercept) with adjustments for the random effects 2 SD above and below the average.
 
 ```
-
-[The 95% prediction interval is... There is a large/small amount of individual variation...] 
-
 \newpage 
 
 \begin{center}

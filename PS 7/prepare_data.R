@@ -11,7 +11,7 @@ library(ggsci) # for cool color pallets
 
 
 # load data 
-dat <- read.dta13("peds.dta")
+dat <- read.dta13("./PS 7/peds.dta")
 nrow( dat )
 
 
@@ -86,7 +86,7 @@ nrow( dat )
 
 dat = dplyr::select( dat, -ch_height, -ch_weight )
 
-saveRDS( dat, file="cleaned_data.rds" )
+saveRDS( dat, file="./PS 7/cleaned_data.rds" )
 
 
 
