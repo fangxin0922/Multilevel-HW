@@ -1,0 +1,289 @@
+---
+title: 'My Amazing Solutions to Problem Set 7: Complex Models'
+author: "ANONYMOUS"
+date: "`r Sys.Date()`"
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r initial exploration, include = FALSE}
+# Initial Exploration (included here for convenience)
+  # This is the code from the script "initial_exploration.R" 
+  # Get familiar with this code and what it is doing before you proceed 
+
+options( digits=3 )
+
+# load packages 
+library(tidyverse)
+library(arm)
+library(readstata13)
+library(ggsci) # for cool color pallets
+library(lme4)
+library(merTools)
+
+
+dat = readRDS( "cleaned_data.rds" )
+
+head( dat )
+
+# aggregate data by time and tx group.
+haz <- dat %>% group_by(EN, time.f, mtime) %>% 
+  summarise(ch_haz = mean(ch_haz), 
+            ch_stunted = mean(ch_stunted),
+            .groups = "drop" )
+haz 
+
+# Plot two outcomes by time and treatment group  
+ggplot(haz, aes(x=time.f, y=ch_haz, group=EN, color=EN)) +
+  geom_line(lwd=1.2) + geom_point() +
+  labs(x="Time", y="Average", 
+       title="Average HAZ by intervention arm and time point",
+       color="Intervention arm") +
+  theme(legend.position="bottom") + scale_colour_startrek() 
+
+
+
+ggplot(haz, aes(x=time.f, y=ch_stunted, group=EN, color=EN)) +
+  geom_line(lwd=1.2) + geom_point() +
+  labs(x="Time", y="Proportion", 
+       title="Stunting by intervention arm and time point",
+       color="Intervention arm") +
+  theme(legend.position="bottom") + scale_colour_startrek() 
+
+
+```
+
+#where treatment is RS+EN and EN, and control is RS + original controls, notice that the average HAZ decreases over time for both groups, but starts lower for treatment groups(??), spikes at 6 months! and has a notably steep decline btween 6 months and 12 months but still higher average HAZ scores than the control arm. The control arm has no growth over time between 18 and 24 months. Also on average lower than treatment at each time point. 
+
+```{r}
+# Look at population differences in proportion stunted at different time points
+# between tx groups at time points
+head( haz )
+haz.w = haz %>%
+  pivot_wider( values_from = c(ch_haz, ch_stunted), 
+               names_from = "EN" ) 
+
+head( haz.w )
+haz.w = mutate( haz.w, Delta_stunt = ch_stunted_Tx - ch_stunted_Co )
+haz.w
+
+```
+
+Given the proportions as discussed the difference in stunting is intiially positive, and then is negative (comparing control to treatment) over time. There seems to be at 12 months a closing of that gap before dramatic difference between 18 and 24 months which are also the months where growth overtime ceases for the control group. 
+
+```{r}
+## ----Simple multilevel model ------------------------------------------------------------
+
+
+M1 = lmer(ch_haz ~ mtime * EN  + (1 + mtime|ch_id) + (1|lhw_id), 
+              data=dat,
+              control = lmerControl(optimizer = "bobyqa"))
+display( M1 )
+
+```
+We've got stunting on time, treatment(fixed effects) and random effects random intercept for children and for third level group (clusters), as well as random slope for time at level 2(children)
+
+```{r}
+# Look at some of the random effects
+qplot( coef(M1)$ch_id[[1]] )
+qplot( coef(M1)$lhw_id[[1]] )
+
+```
+
+child id random intercept coefficient is 1.17, and wesee from q plot, some children start as high as 150, seems to be relatively normal may say a bit left skewed. Good bit of distribution between -3 and 1? 
+
+have no idea whats going on by cluster... 
+
+\newpage 
+\begin{center}
+\huge ~ The Problems ~
+\end{center}
+
+# 1. Some code review questions
+
+a) For the cleaned and prepared data, what is the `EN` variable and how was it made?
+
+The EN variable is the new treatment variable "Enhanced Nutrition" that is made up of the EN (enhanced nutrition education treatment group 2)  and RS+EN (both Responsive Simulation and Enhanced Nutrition, which was treatment group 3) treatment groups. Treatment and control were both re leveled, to have 2 out of the 4 original treatment groups as indicated by the study. We releveled the treatment groups (NOTE WHAT THIS MEANS) and created if else statements to recode them.
+
+b) What was done with children with missing outcome data?
+Children with missing outcome data for both stunting and height for age z scores were dropped (filtered) out of the data. 
+
+c) What are the `mtime` and `time.f` variables and how are they different?
+
+Mtime is time in months created from the original time variable which was categorical for each survey wave starting with baseline, 6 months, 12 months, 18 months and 24 months, with one subtracted from it and multiplied by 6. 
+Time.f is time factored. 
+
+\newpage 
+
+# 2. Evaluate potential model fit
+
+[Your explanation here]
+
+\newpage 
+
+# 3. Identify a mathematical model
+
+M1 = lmer(ch_haz ~ mtime * EN  + (1 + mtime|ch_id) + (1|lhw_id), 
+              data=dat,
+              control = lmerControl(optimizer = "bobyqa"))
+              
+ch_hazij​=β0​+β1​⋅mtimeij​+β2​⋅ENij​+β3​⋅mtimeij​⋅ENij​+u0j​+u1j​⋅mtimeij​+eij
+
+*look at written code and compare with Xin 
+should be something like: 
+ch_haz_ij= beta_0 + beta_1*mtime_ij + beta_2*EN_ij + beta_3*mtime_ij*EN_ij + mu_0j + mu_1j*mtime_ij + varepsileon_ij
+
+         
+\newpage 
+
+# 4. Make a prediction interval
+
+```{r prediction interval}
+
+#just filter dataset 
+new.dat2<-subset(dat, EN=="Co" & mtime == 0)
+average_predicted_value <- mean(predict(M1, newdata = new.dat2, re.form = NA))
+
+# Extract the standard deviation of the random intercepts
+sd_intercept <- 1.17  # Replace with the appropriate standard deviation value
+
+# Calculate the Z-value for 2 SD above and 2 SD below
+Z_2SD <- 2
+
+# Calculate the predicted values for a child with a random intercept 2 SD above and 2 SD below the average
+predicted_value_2SD_above <- average_predicted_value + (Z_2SD * sd_intercept)
+predicted_value_2SD_below <- average_predicted_value - (Z_2SD * sd_intercept)
+
+# Calculate the lower and upper bounds for 2 SD above and 2 SD below
+LowerBound <- predicted_value_2SD_below
+UpperBound <- predicted_value_2SD_above
+
+# Print the prediction intervals
+cat("2 SD Prediction Interval:\n")
+cat("Lower Bound: ", LowerBound, "\n")
+cat("Upper Bound: ", UpperBound, "\n")
+
+```
+
+[The 95% prediction interval is... There is a large/small amount of individual variation...] 
+-3.54, 1.14
+This prediction interval is relatively wide meaning  that there is a considerably large degree of individual variation in child size as individual height for age z scores can vary significantly from the average HAZ scores at baseline in the control group. 
+\newpage 
+
+\begin{center}
+\large ~ Extension:\\ Improving Model Fit ~
+\end{center}
+
+# 5. Allowing for a curve
+
+```{r}
+## ----Simple multilevel model ------------------------------------------------------------
+
+
+M2 = lmer(ch_haz ~ mtime:EN + EN + time.f + (1 + mtime|ch_id) + (1|lhw_id), 
+          data=dat,
+          control = lmerControl(optimizer = "bobyqa"))
+
+summary(M2)
+
+```
+
+The final parameters include the random intercepts for each ch_id, the random slopes 
+## for each mtime, and the random intercepts for each lhw_id. For fixed effects the parameters include
+## the overall intercept, and parameter estimates for time.f6, time.f12, time.f18, time.f24 (reference group = 0 months), 
+## the main effect for EN, and the interaction term mtime:ENCo. This is a total of 10 parameter estimates. 
+
+
+
+\newpage 
+
+# 6. Plot the treatment curves
+
+```{r plots}
+# Some plotting code here 
+
+
+# For convenience, here are some of the code snippets from the assignment sheet:
+
+groups = expand.grid( ch_id = -1, #indicates fixed value 
+                     lhw_id = -1, #indicates fixed value 
+                     time.f = unique( dat$time.f ),
+                     EN = unique( dat$EN ) )
+times = parse_number( levels( dat$time.f ) )
+groups$mtime = times[ groups$time.f ]
+
+predictions = predict(M2, newdata = groups, allow.new.levels =TRUE)
+
+library(ggplot2)
+
+##plot of just the predictions
+p2 <- ggplot(groups, aes(x = time.f, y = predictions, color = factor(EN))) +
+  geom_line(aes(group = interaction(ch_id, EN)))  +
+  labs(title = "Treatment Trajectories for Hypothetical Children",
+       x = "Time",
+       y = "HAZ")  
+
+## plot the predictions over the original plot from the exploratory section ## this is what needs to be turned in.
+ggplot(haz, aes(x = time.f, y = ch_haz, group = EN, color = EN)) +
+  geom_line(lwd = 0.1) + geom_point() +
+  labs(x = "Time", y = "HAZ", 
+       title = "Predicted and observed HAZ by intervention arm and time point",
+       color = "Intervention arm", 
+       caption = "Thick lines represent predicted values, thin lines represent observed values") +
+  theme(legend.position = "bottom") +
+  geom_line(data = groups, aes(x = time.f, y = predictions, color = factor(EN)), lwd = 1.5)
+```
+
+[Your assessment] 
+
+\newpage 
+
+# 7. Use predicted values to create plots for 16 random children
+
+```{r individual plots}
+dat$pred <- predict(M2, dat)
+set.seed(143)
+index <- sample(unique(dat$ch_id), size=16)
+
+subset <- dat[dat$ch_id %in% index,]
+
+ggplot(data=subset)+
+  geom_line(aes(x=time, y=ch_haz, group = EN, color="Observed"))+
+  geom_line(aes(x=time, y=pred, group = EN, color="Predicted"))+
+  facet_wrap( ~ ch_id )+
+  labs(title = "A sample of 16 Childrien's HAZ", x="Time", y="HAZ")
+
+``` 
+
+The predicted values do appear to follow the observed data in a generally reasonable way, there are individuals for which the predicted values are not great, but the general trends are fairly consistent. 
+\newpage 
+
+# 8. Interpret the results of the model (Answer RQ 1)
+
+# we kept the random intercept for lhw_id to account for clustering by lhw_id. According to this simple model, not controlling for any potential confounders,
+## we find that EN is not significantly associated with baseline HAZ. With the limited knowledge I have about this dataset, yes this makes sense, as if we are looking cross-sectionally
+##simply at baseline, it makes sense that the effect of the intervention (which would have also just started...) would not be reflected in the HAZ measurements.
+baseline <- filter(dat, time == 1)
+
+library(lmerTest)
+M1 = lmer(ch_haz ~  EN + (1|lhw_id), 
+          data=dat,
+          control = lmerControl(optimizer = "bobyqa"))
+
+summary(M1)
+
+##b Assess whether EN significantly impacts child growth over time.
+## Modelling the effect of EN over time with a mixed effect model, allowing for the effect of time on HAZ to vary by child ID (and a random intercept for each child ID and lcw ID),
+## with fixed effects for the intervention, time, and their interaction, we find no significant association of EN on HAZ overtime. 
+M2 = lmer(ch_haz ~ mtime:EN + EN + time.f + (1 + mtime|ch_id) + (1|lhw_id), 
+          data=dat,
+          control = lmerControl(optimizer = "bobyqa"))
+
+summary(M2)
+
+## c. No the estimated impact does not seem notable, and it is not significant. The parameter estimate for the interaction term, allowing the effect of EN to vary over time = 0.00302.
+## we can also estimate the predicted HAZ at time 0-24 months for the treatment group vs the control group. We see that there is not a large difference between the two treatment groups. 
+
+
+\newpage 
