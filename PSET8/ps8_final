@@ -1,0 +1,184 @@
+---
+title: 'Problem Set 8: Logistic Growth Curves'
+author: "S-043 (Fall 2023)"
+date: 'Template'
+header-includes:
+output: pdf_document
+---
+
+
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
+# load packages
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(arm)
+library(ggsci) # for cool color pallets
+library(texreg)
+library(tinytex)
+library(ggplot2)
+library(cowplot)
+
+options(digits=3)
+
+# clear workspace 
+rm(list = ls())
+```
+
+```{r, include=FALSE}
+# this is the "initial_analysis" script 
+
+# load cleaning dataset 
+# you must run the "prepare_data" script
+  dat = readRDS("C://Users//jenni//Downloads//cleaned_data (1).rds")
+  head( dat )
+```
+
+## 1. Fit a Logistic Regression Model
+Random effects linear growth model with ch_stunted as the outcome, allowing an time*EN interaction, include random intercept sand slopes for both child and LHW 
+
+```{r}
+m1<-glmer(ch_stunted~mtime*EN +(1+mtime|ch_id) + (1+mtime|lhw_id), data=dat, family = binomial, control=glmerControl(optimizer="bobyqa" ))
+
+summary(m1)
+```
+
+\newpage
+
+## 2. Interpret the Results of the Model (Answer RQ2)
+
+### 2a. Assess whether EN significantly impacts the initial odds of being stunted.  Does this result make sense?
+
+*Make sure log odds is okay and not transformed to probability *
+The initial log odds  of ch_stunting for the treatment effect ENTx at baseline is 0.247, but this is not statistically significant at the 0.05 significance level with a p-value = 0.275 >0.05. Beyond the fact that treatment was randomized at baseline, indicating that we would not expect there to be any statistically significant differences at baseline (before initiation). Over time we do see a statistically significant difference, when treatment is interacted with time. 
+
+### 2b. Assess whether EN significantly impacts how the odds of a child being stunted changes over time.
+
+The log odds of stunting over time looking at EN:TIME is -0.065; this  is statistically significant, p-value of 0.001 < 0.05 significance level, allowing us to reject the null hypothesis that EN does not change the log odds of ch_stunting outcome across levels of time. This makes sense, as we have hypothesized that the treatment once initiated would aid in decreasing the odds of stunting for those who were randomized to receive it, as they age. 
+
+### 2c. Interpret the fixed effect coefficients of the logistic linear growth model in terms of odds multipliers.
+```{r}
+# odds ratio formulation
+exp( fixef( m1 ) )
+```
+The odds of childhood stunting at baseline occurring is 0.071 times the odds of it not occurring, when mtime=0 and treatment=0. 
+Time odds ratio: 1.24, For each one-unit increase in the mtime variable, the odds of the event childhood stunting occurring increases by ~1.23 times, holding treatment constant. 
+Treatment odds ratio: 1.28, The odds of childhood stunting for those who have the treatment is 1.28 times the odds of childhood stunting for those who do not have the treatment (control group), holding time constant.
+Interaction time and treatment: Comparing the treated group of children, vs the untreated group of children (controls), the additional difference above and beyond the difference in the odds of stunting across levels of time is 0.937  
+
+\newpage
+
+## 3. Make and interpret a median growth trajecotry plot
+
+### 3a. Enter in and adapt the following code so it works with your script:
+
+```{r, eval = FALSE}
+npd = expand.grid( ch_id = -1,
+                     lhw_id = -1, 
+                     mtime = seq( 0, 24, by = 1 ),
+                     EN = unique( dat$EN ) )
+npd$ch_stunted = predict( m1, newdata=npd, 
+                            allow.new.levels=TRUE, 
+                            type="response" )
+plot_raw <- ggplot( npd, aes( mtime, ch_stunted, col=EN ) ) +
+    geom_line() + geom_point()
+
+plot_raw
+```
+
+### Interpret what this plot shows us in terms of individual or population average impacts. If individual, describe the individual we are seeing. 
+
+The plot demonstrates the effect of the treatment over time for the predicted probability of being stunted at the population level. The proportion of children who experience stunting over time is different for those within treatment vs those who were in the control group. 
+
+Overall the proportion of stunting overtime (lower height for age z scores), increased over time for both groups, but the odds of stunting for those in the treatment group was lower than the odds of stunting in the control group over time. 
+
+\newpage
+
+## 4. Plot the aggregate of the individual predictions as a model check
+
+```{r, eval = FALSE}
+alldat = expand.grid( ch_id = unique( dat$ch_id ),
+                      EN = unique( dat$EN ),
+                      mtime = unique( dat$mtime ) )
+
+# Add in the child's LHW 
+children = dplyr::select( dat, ch_id, lhw_id ) %>% unique()
+alldat = merge( alldat, children, by="ch_id" )
+
+# Predict for all these points
+alldat$pr_stunt = predict( m1, newdata=alldat, type="response" )
+
+aggdat = alldat %>% group_by( EN, mtime ) %>%
+  summarise( pr_stunt = mean( pr_stunt ) )
+```
+
+Using the `aggdat` dataframe, make a plot just like you did in the first part of this assignment.
+How does this plot compare to your raw data? Is there evidence of model misfit?
+
+**ANSWER HERE**: The plot compares relatively well, showing an increase in predicted probability of stunting over time, varied by treatment level. Predicted probability of stunting over time is lower for the treated group as compared to the control group over time. 
+
+Model misfit: I do not think there is evidence of model misfit, as the predicted probability of stunting over time is lower for those in the treatment group, which is what we would expect.
+
+```{r}
+
+# Create the plot
+plot_model <- ggplot(aggdat, aes(x = mtime, y = pr_stunt, color = EN)) +
+  geom_line() + 
+  geom_point() +
+  labs(x = "mtime", y = "Predicted Probability of Stunting", color = "EN") +
+  theme_minimal()
+
+plot_model
+
+#compare the plots side by side 
+# use the exact same y axis for both plots
+plot_grid(plot_raw, plot_model, align = 'v', axis = 'lr')
+```
+
+\newpage
+
+## 5. A sensitivity check
+
+### Make a regression table
+
+```{r}
+# add in the covariates: hh_foodsec - household food security
+m2 <- glmer(ch_stunted~mtime*EN + hh_foodsec + (1+mtime|ch_id) + (1+mtime|lhw_id), data=dat, family = binomial, control=glmerControl(optimizer="bobyqa" ))
+
+# make a table using the texreg package
+screenreg( list( m1, m2 ) )
+
+```
+
+### 5a. Did the point estimate change?
+The point estimates changed very slightly. On the logit scale, the slope treatment changed from 0.25 to 0.21. and the slope for the interaction term changed from -0.07 to -0.06.
+
+### 5b. Did the SE change?
+
+The SE did not change. 
+
+### 5c. Did anything else change?
+
+Model fit parameters: AIC and BIC decreased slightly and the log likelihood increased slightly. However, the change is so small that it is not meaningful. Typically, the more covariates we add, the better the model fit will be.
+
+
+### 5d. Are any covariates connected to the outcome?
+```{r}
+exp(fixef(m2))
+```
+The household food security variable is statistically significant at the 0.05 significance level, with a p-value < 0.01. The odds of childhood stunting for those who are food insecure is 0.5254 times the odds of childhood stunting for those who are not food secure, holding time and treatment constant.
+
+\newpage
+
+## 6. Write a formal wrap-up
+Using your models and plots, write a few sentences giving your final results as if you were writing the results in a research paper.
+
+
+**ANSWER**: 
+### Results Summary
+
+In our analysis of the treatment effect on childhood stunting (ch_stunting), the initial log odds at baseline with treatment (ENTx) were found to be 0.247, but this did not reach statistical significance (p-value = 0.275). This lack of significant difference at baseline was anticipated, as the treatment was randomized at this stage. However, over time, a significant effect emerged when treatment was considered in conjunction with time. The log odds of stunting over time (EN:TIME) showed a statistically significant decrease (p-value = 0.001), supporting the hypothesis that the treatment reduces the odds of stunting as children age. 
+
+The analysis also revealed that the odds of childhood stunting increased slightly over time and with treatment, but the interaction between time and treatment indicated a beneficial effect of the treatment. The graphs supported these findings, showing a lower predicted probability of stunting over time in the treatment group compared to the control group. This trend aligns with our expectations and suggests the absence of model misfit, indicating that the treatment is effective in reducing the odds of childhood stunting.
+
+Adding a covariate of household food security as baseline did not change the results substantively. The sensitivity check was passed and the results are relatively robust. 
