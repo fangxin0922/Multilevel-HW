@@ -91,16 +91,20 @@ mobility_filtered <- mobility_filtered %>%
     TRUE ~ NA_character_
   )) 
 
-### merge the clean PM and mobility datasets finally!
+### merge the clean PM and mobility datasets finally! ##
+
 # first remove data from PM dataset for which we have no mobility data
 pm_merged <- filter(pm_merged, !is.na(Mobility_SiteName))
 
 #make sure date var is a date
 mobility_filtered$date <- as.Date(mobility_filtered$date, format = "%m/%d/%Y")
-#rename date column in pm df to match mobility df
 colnames(pm_merged)[colnames(pm_merged) == "UTC"] <- "date"
+pm_merged$date <- as.Date(pm_merged$date, format = "%m/%d/%Y")
+
+check <- filter(final_ds, Mobility_SiteName == "Bangladesh")
 
 #merge the datasets by date and site id. keep all observations for PM even if there is no matching date from the mobility (incase we want to do anything regarding detrending/seasonality etc)
+library(tidyr)
 final_ds <- merge(mobility_filtered, pm_merged, by = c("Mobility_SiteName", "date"), all.x = TRUE, all.y = TRUE)
 final_ds <- final_ds %>% select(c("Mobility_SiteName", "date", "country_region", "retail_and_recreation_percent_change_from_baseline" ,
                                   "grocery_and_pharmacy_percent_change_from_baseline" ,
@@ -108,6 +112,26 @@ final_ds <- final_ds %>% select(c("Mobility_SiteName", "date", "country_region",
                                    "workplaces_percent_change_from_baseline", "residential_percent_change_from_baseline",       
                                    "PM_SiteName", "a_mean"  , "sd"))
 
-library(lme4)
-x <- lmer(a_mean ~ workplaces_percent_change_from_baseline + (1 | Mobility_SiteName), data = final_ds)
-summary(x)
+##some further cleaning up
+final_ds <- final_ds %>%
+  group_by(Mobility_SiteName) %>%
+  fill(country_region, .direction = "downup")
+#The associated country for Kolkata and Guatemala city did not read in? added it in manually here
+final_ds$country_region[final_ds$Mobility_SiteName == "Kolkata"] <- "India"
+final_ds$country_region[final_ds$Mobility_SiteName == "Guatemala"] <- "Guatemala"
+
+## read in the HDI data
+hdi <- read.csv("C:\\Users\\jenni\\Downloads\\hdi.csv", header=TRUE, sep=",", na.strings=c("","NA"))
+
+#keep only the 2020 data
+hdi <- hdi %>% select(c("country", "hdicode", "hdi_2020"))
+
+##fix the names in the HDI dataset that wont merge properly to our final_ds cause theyre spelled dif or whatever reason
+hdi$country[hdi$country == "Viet Nam"] <- "Vietnam"
+hdi$country[hdi$country == "Lao People's Democratic Republic"] <- "Laos"
+hdi$country[hdi$country == "Myanmar"] <- "Myanmar (Burma)"
+
+#merge to the main dataset by country
+final_ds <- merge(hdi, final_ds, by.x = "country", by.y = "country_region", all.y = TRUE)
+
+write.csv(final_ds, file = "C:\\Users\\jenni\\Downloads\\final_ds.csv", row.names = FALSE)
