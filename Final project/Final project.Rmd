@@ -17,34 +17,39 @@ Mobility: The data were compared for COVID phase (ie, March 14 - October 15 2020
 ## The mathematical model (multilevel form) 
 $$
 \begin{aligned}
-PM2.5_{ti} &= \pi_{0i} + \pi_{1i} time_{ti} + \pi_{2i} mobility_{ti} + \epsilon_{ti} \\
+For \ time \ t \ in \ site\ i\\
+PM2.5_{ti} &= \pi_{0i} + \pi_{1i} date_{ti} + \pi_{2i} month_{ti} +\pi_{3i} workplace_{ti} + \epsilon_{ti} \\
 \\
 \epsilon_{ti} &\sim N(0,\sigma^2) \\
 \\
-\pi_{0i} &= \gamma_{00} + \gamma_{01} GDP_{i} + \gamma_{02} Population_{i} +  u_{0i} \\
+\pi_{0i} &= \gamma_{00} + \gamma_{01} HDI_{i} + \gamma_{02} Population_{i} +  u_{0i} \\
 \pi_{1i} &= \gamma_{10} + u_{1i} \\
-\pi_{2i} &= \gamma_{20} + u_{2i} \\
+\pi_{2i} &= \gamma_{20} + \gamma_{21} hemisphere_{i} \\
+\pi_{3i} &= \gamma_{30} + \gamma_{31} HDI_{i} 
 \\
 \begin{bmatrix}
 {u_{0i}}\\ 
 {u_{1i}}\\
-{u_{2i}}
 \end{bmatrix} &~\sim N\left( {\left[ {\begin{array}{*{30}{c}}
-{{0}}\\
 {{0}}\\
 {{0}}
 \end{array}} \right],\left[ {\begin{array}{*{30}{c}}
 {\tau_{00}}&{}\\
 {\tau_{10}}&{\tau_{11}}\\
-{\tau_{20}}&{\tau_{21}}&{\tau_{22}}
 \end{array}} \right]} \right)
 \end{aligned}
 $$
 
 **Define indices and parameters in the above model:**
+At level 1 (time-varying) covariates: time, measured in days \
+$mobility_{ti}$: mobility data for each day\
+$month_{ti}$: month of of the day\
+$workplace_{ti}$: workplace percentage change for each day\
 
--   Level 1: time, measured in days
--   Level 2: each country 
+At level 2 (site specific invariant covariates):\
+$HDI_{i}$: HDI for each site \
+$population_{i}$: population density for each site\
+
 -   $time_{ti}$: time is the days at measurement *t* for country *i*
 -   $mobility_{ti}$: % change in mobility compared to the median value of the day of the week during baseline days before COVID (5 weeks, from January 3 to February 6, 2020), at measurement *t* for country *i*
 -   $\pi_{0i}$: a country's baseline PM2.5 level, i.e., \# PM2.5 level at $time_{ti}$ = 0 and $mobility_{ti}$ = 0
@@ -60,7 +65,8 @@ $$
 -   $\rho=\frac{\tau_{10}}{\sqrt{\tau_{00}\tau_{11}}}$: correlation between initial status (intercepts $u_{0i}$) and rate of change (slopes $u_{1i}$)
 -   $\epsilon_{ti}$: residual for measurement of PM2.5 at time $t$ for country $i$ - how far a particular measurement is different from the model's prediction
 -   $\sigma^2$: variance of all of the residuals (how much of the data is left unexplained after our model)
-***Marshae: it would be great if you could double check on the interpretations and some parameters can be deleted for conciseness***
+
+
 Mathematical model (reduced form or lmer command)
 
 ## Lmer Model Formula

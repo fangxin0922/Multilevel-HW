@@ -46,7 +46,7 @@ $$
 \pi_{1j} &= \gamma_{10} + \gamma_{11} w_{1j} + \gamma_{12} w_{2j} + u_{1j}
 \end{aligned}
 $$
-with $(u_{0j}, u_{1j})$ bivariate normal as usual.]
+with $(u_{0j}, u_{1j})$ bivariate normal as usual.
 
 \bigskip
 

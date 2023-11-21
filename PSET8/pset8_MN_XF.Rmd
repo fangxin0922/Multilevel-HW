@@ -181,4 +181,4 @@ In our analysis of the treatment effect on childhood stunting (ch_stunting), the
 
 The analysis also revealed that the odds of childhood stunting increased slightly over time and with treatment, but the interaction between time and treatment indicated a beneficial effect of the treatment. The graphs supported these findings, showing a lower predicted probability of stunting over time in the treatment group compared to the control group. This trend aligns with our expectations and suggests the absence of model misfit, indicating that the treatment is effective in reducing the odds of childhood stunting.
 
-Adding a covariate of household food security as baseline did not change the results substantively. The sensitivity check was passed and the resutls are retively robust. 
+Adding a covariate of household food security as baseline did not change the results substantively. The sensitivity check was passed and the results are relatively robust. 

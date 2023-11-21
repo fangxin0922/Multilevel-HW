@@ -1,17 +1,18 @@
-pm <- read.csv("C:\\Users\\jenni\\Downloads\\final_ds.csv", header=TRUE, sep=",", na.strings=c("","NA"))
-hemis <- read.csv("C:\\Users\\jenni\\Downloads\\hemisphere.csv", header=TRUE, sep=",", na.strings=c("","NA"))
-popdens <- read.csv("C:\\Users\\jenni\\Downloads\\pop_density.csv", header=TRUE, sep=",", na.strings=c("","NA"))
-
-pm <- merge(pm, hemis, by.x ="country", by.y ="Country.Name")
-pm <- merge(pm, popdens, by.x = "country", by.y = "Country.Name")
-pm <- rename(pm, "pop_density" = "X2020")
-
 library(dplyr)
 library(tidyr)
 ##install.packages("xts")
 library(xts)
 ##install.packages("lubridate")
 library(lubridate)
+
+pm <- read.csv("./final_ds.csv", header=TRUE, sep=",", na.strings=c("","NA"))
+hemis <- read.csv("./Final project/hemisphere.csv", header=TRUE, sep=",", na.strings=c("","NA"))
+popdens <- read.csv("./Final project/pop_density.csv", header=TRUE, sep=",", na.strings=c("","NA"))
+
+# Merging datasets
+pm <- merge(pm, hemis, by.x ="country", by.y ="Country.Name")
+pm <- merge(pm, popdens, by.x = "country", by.y = "Country.Name")
+pm <- rename(pm, "pop_density" = "X2020")
 
 ## create a time variable to account for trend
 pm$date <- as.Date(pm$date, format = "%Y-%m-%d")
@@ -33,8 +34,8 @@ options(scipen = 999)
 pm$hdicode <- as.factor(pm$hdicode)
 pm <- pm %>%
   mutate(workplaces_reversed = -workplaces_percent_change_from_baseline)
-pm$hdicode <- factor(relevel(pm$hdicode, ref = "Very High"), levels = c("Low", "Medium", "High", "Very High"))
 
+pm$hdicode <- factor(relevel(pm$hdicode, ref = "Very High"), levels = c("Low", "Medium", "High", "Very High"))
 
 x <- lmer(a_mean ~ workplaces_reversed*hdicode  + time_index + month*hemisphere + pop_density +
               (1 + time_index | Mobility_SiteName), control = lmerControl(optimizer = "bobyqa"),
@@ -48,11 +49,11 @@ library(ggeffects)
 library(ggplot2)
 interaction_effects <- ggeffect(x, c("workplaces_reversed", "hdicode"))
 p <- plot(interaction_effects) 
-p + ggtitle("Assocation between change in # of people at workplaces and PM2.5 concentrations during the COVID-19 lockdowns") +
-  labs(colour = "Human Development Index", x = "% Change from baseline in # people at workplaces",
+p + ggtitle("Assocation between PM2.5 concentrations during the COVID-19 lockdowns vs. the degree of reduction of the workplace population") +
+  labs(colour = "Human Development Index", x = "% reduction of the population at workplaces",
        y = "PM2.5 concentration (ug/m3)", caption = "Figure 1. Interaction plot estimating PM2.5 concentrations from changes in workplace mobility patterns across levels of HDI") 
   
-  ### plot month*hemisphere just to see how its handling seasonality
+### plot month*hemisphere just to see how its handling seasonality
 interaction_effects2 <- ggeffect(x, c("month", "hemisphere"))
 plot(interaction_effects2)
 
