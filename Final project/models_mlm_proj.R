@@ -24,12 +24,16 @@ pm$month <- month(pm$date)
 pm$month <- as.factor(pm$month)
 
 ##descriptive statistics
-install.packages("tableone")
+#install.packages("tableone")
 library(tableone)
 
 library(tableone)
 #install.packages("htmlTable")
 library(htmlTable)
+
+pm$hdicode <- as.factor(pm$hdicode)
+pm <- pm %>%
+  mutate(workplaces_reversed = -workplaces_percent_change_from_baseline)
 
 selected_columns <- c("hdi_2020", "workplaces_reversed", 
                       "residential_percent_change_from_baseline", "a_mean", "pop_density")
@@ -45,21 +49,19 @@ write.csv(tab2Mat, file = "myTable.csv")
 
 ## number of sites in each HDI
 site_counts <- pm %>%
-  group_by(hdicode, PM_SiteName) %>%
-  summarise(n = n_distinct(PM_SiteName)) %>%
+  group_by(hdicode, Mobility_SiteName) %>%
+  summarise(n = n_distinct(Mobility_SiteName)) %>%
   summarise(total_sites = sum(n))
 
 # Print the result
 print(site_counts)
 
-## testing ##
+### testing ###
 
 ## model 1 is residential percent change
 library(lme4)
-pm$hdicode <- as.factor(pm$hdicode)
-pm <- pm %>%
-  mutate(workplaces_reversed = -workplaces_percent_change_from_baseline)
-
+#install.packages("gtsummary")
+library(gtsummary)
 pm$hdicode <- factor(relevel(pm$hdicode, ref = "Very High"), levels = c("Low", "Medium", "High", "Very High"))
 
 x <- lmer(a_mean ~ workplaces_reversed*hdicode  + time_index + month*hemisphere + pop_density +
@@ -68,14 +70,16 @@ x <- lmer(a_mean ~ workplaces_reversed*hdicode  + time_index + month*hemisphere 
 
 summary(x)
 
+tbl <- tbl_regression(x)
+
 ### plot interaction
 #install.packages("ggeffects")
 library(ggeffects)
 library(ggplot2)
 interaction_effects <- ggeffect(x, c("workplaces_reversed", "hdicode"))
 p <- plot(interaction_effects) 
-p + ggtitle("Assocation between PM2.5 concentrations during the COVID-19 lockdowns vs. the degree of reduction of the workplace population") +
-  labs(colour = "Human Development Index", x = "% reduction of the population at workplaces",
+p + ggtitle("Assocation between PM2.5 concentrations during the COVID-19 lockdowns and % reduction in workplace population") +
+  labs(colour = "Human Development Index", x = "% reduction workplace population",
        y = "PM2.5 concentration (ug/m3)", caption = "Figure 1. Interaction plot estimating PM2.5 concentrations from changes in workplace mobility patterns across levels of HDI") 
   
 ### plot month*hemisphere just to see how its handling seasonality
@@ -84,16 +88,16 @@ plot(interaction_effects2)
 
 ## plot random effects
 library(sjPlot)
+install.packages("glmmTMB")
+library(glmmTMB)
 custom_palette <- rainbow(length(unique(pm$Mobility_SiteName)))
-plot_model(x, type="pred",
-           terms=c("time_index", "Mobility_SiteName"),
-           pred.type="re", ci.lvl = NA, colors = custom_palette,
-           title = "Plot of random slopes for the effect of time on PM2.5 by site",
-           legend.title = "Monitoring Site") +
-  labs(caption = "Figure 2. Plot of random slopes for the effect of time on PM2.5 by monitoring site.
-       This plot provides evidence of the differential effect of time on PM2.5 concentrations by site",
-       x = "Time index (February-October 2020)",
-       y = "PM2.5 concentration (ug/m3)")
+plot_model(x, type = "re", 
+           title = "Variability in estimated random intercepts across monitoring sites") +
+  labs(x = "Monitoring site", y = "Estimated deviation in random intercept from overall mean",
+       caption = "Figure 2. Variability in estimated deviations of random intercepts for PM2.5 across monitoring sites. 
+       Each point represents the estimated difference in the random intercept for a specific mobility site from the overall mean intercept.")
+
+
 
 
 ##evaluating the variance components (required for the EDA)
