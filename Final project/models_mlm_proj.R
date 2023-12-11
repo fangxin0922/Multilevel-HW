@@ -1,20 +1,12 @@
+##load required packages
 library(dplyr)
 library(tidyr)
-##install.packages("xts")
 library(xts)
-##install.packages("lubridate")
 library(lubridate)
 
-pm <- read.csv("C:\\Users\\jer403\\Downloads\\final_ds.csv", header=TRUE, sep=",", na.strings=c("","NA"))
-hemis <- read.csv("C:\\Users\\jer403\\Downloads\\hemisphere.csv", header=TRUE, sep=",", na.strings=c("","NA"))
-popdens <- read.csv("C:\\Users\\jer403\\Downloads\\pop_density.csv", header=TRUE, sep=",", na.strings=c("","NA"))
+pm <- read.csv("C:\\Users\\jer403\\Downloads\\mlm_ds.csv", header=TRUE, sep=",", na.strings=c("","NA"))
 
-# Merging datasets
-pm <- merge(pm, hemis, by.x ="country", by.y ="Country.Name")
-pm <- merge(pm, popdens, by.x = "country", by.y = "Country.Name")
-pm <- rename(pm, "pop_density" = "X2020")
-
-## create a time variable to account for trend
+## create a time index to account for trend
 pm$date <- as.Date(pm$date, format = "%Y-%m-%d")
 unique_dates <- sort(unique(pm$date))
 pm$time_index <- match(pm$date, unique_dates)
@@ -25,8 +17,6 @@ pm$month <- as.factor(pm$month)
 
 ##descriptive statistics
 #install.packages("tableone")
-library(tableone)
-
 library(tableone)
 #install.packages("htmlTable")
 library(htmlTable)
@@ -58,7 +48,7 @@ print(site_counts)
 
 ### testing ###
 
-## model 1 is residential percent change
+## model 1 is workplace percent change as main predictor
 library(lme4)
 #install.packages("gtsummary")
 library(gtsummary)
@@ -69,6 +59,9 @@ x <- lmer(a_mean ~ workplaces_reversed*hdicode  + time_index + month*hemisphere 
      data = pm)
 
 summary(x)
+##install.packages("arm")
+library(arm)
+arm::display(x)
 
 tbl <- tbl_regression(x)
 
@@ -88,7 +81,7 @@ plot(interaction_effects2)
 
 ## plot random effects
 library(sjPlot)
-install.packages("glmmTMB")
+##install.packages("glmmTMB")
 library(glmmTMB)
 custom_palette <- rainbow(length(unique(pm$Mobility_SiteName)))
 plot_model(x, type = "re", 
@@ -97,9 +90,6 @@ plot_model(x, type = "re",
        caption = "Figure 2. Variability in estimated deviations of random intercepts for PM2.5 across monitoring sites. 
        Each point represents the estimated difference in the random intercept for a specific mobility site from the overall mean intercept.")
 
-
-
-
 ##evaluating the variance components (required for the EDA)
 null_model <- lme4:: lmer(a_mean ~ 1 + (1 | Mobility_SiteName), data = pm,
                    control = lmerControl(optimizer = "bobyqa"))
@@ -107,8 +97,7 @@ summary(null_model)
 
 sjPlot::tab_model(null_model) ##ICC = 0.26
 
-
-##model 2 
+##model 2 residential mobility as main predictor
 library(lmerTest)
 y <- lmer(a_mean ~ residential_percent_change_from_baseline*hdicode  + time_index + month*hemisphere + pop_density +
             (1 | Mobility_SiteName), control = lmerControl(optimizer = "bobyqa"),
@@ -116,10 +105,12 @@ y <- lmer(a_mean ~ residential_percent_change_from_baseline*hdicode  + time_inde
 
 summary(y)
 
+tbl <- tbl_regression(y)
+
 ## plot model 2
 interaction_effects_mod2 <- ggeffect(y, c("residential_percent_change_from_baseline", "hdicode"))
 p <- plot(interaction_effects_mod2) 
-p + ggtitle("Assocation between PM2.5 concentrations during the COVID-19 lockdowns and increases in time spent at residential locations") +
+p + ggtitle("Assocation between PM2.5 concentrations during the COVID-19 lockdowns and % increase in time spent at residential locations") +
   labs(colour = "Human Development Index", x = "% increase in time spent in residential locations",
        y = "PM2.5 concentration (ug/m3)", caption = "Figure 2. Interaction plot estimating PM2.5 concentrations from changes in residential mobility patterns across levels of HDI") 
 
